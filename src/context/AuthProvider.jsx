@@ -8,7 +8,36 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session: s } }) => {
+    let cancelled = false
+    let t = null
+    const timeout = new Promise((resolve) => {
+      t = setTimeout(() => resolve({ timeout: true }), 8000)
+    })
+
+    Promise.race([supabase.auth.getSession(), timeout]).then(async (result) => {
+      if (cancelled) return
+      if (result?.timeout) {
+        if (import.meta.env.DEV) console.error('[auth] Timeout obteniendo sesión (getSession)')
+        setSession(null)
+        setLoading(false)
+        return
+      }
+
+      const {
+        data: { session: s },
+        error,
+      } = result
+      if (error) {
+        const msg = error.message ?? ''
+        // Si hay un refresh token inválido/ausente en storage, Supabase entra en bucle
+        // intentando refrescar. Forzamos limpieza para desbloquear la app.
+        if (/invalid refresh token|refresh token not found/i.test(msg)) {
+          await supabase.auth.signOut()
+          setSession(null)
+          setLoading(false)
+          return
+        }
+      }
       setSession(s)
       setLoading(false)
     })
@@ -19,7 +48,11 @@ export function AuthProvider({ children }) {
       setSession(s)
     })
 
-    return () => subscription.unsubscribe()
+    return () => {
+      cancelled = true
+      if (t) clearTimeout(t)
+      subscription.unsubscribe()
+    }
   }, [])
 
   const user = session?.user ?? null

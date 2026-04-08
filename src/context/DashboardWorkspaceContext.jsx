@@ -24,6 +24,16 @@ export function DashboardWorkspaceProvider({ children }) {
   const [activeSubscription, setActiveSubscription] = useState(null)
   const [latestSubscription, setLatestSubscription] = useState(null)
 
+  function withTimeout(promise, ms, label) {
+    let t
+    const timeout = new Promise((_, reject) => {
+      t = setTimeout(() => {
+        reject(new Error(`Timeout cargando workspace (${label || 'request'})`))
+      }, ms)
+    })
+    return Promise.race([promise, timeout]).finally(() => clearTimeout(t))
+  }
+
   const refresh = useCallback(async () => {
     if (!user?.id || !isValidUserId(user.id)) {
       setProfile(null)
@@ -43,13 +53,13 @@ export function DashboardWorkspaceProvider({ children }) {
         activeSubscription: sub,
         latestSubscription: latestSub,
         error,
-      } = await fetchWorkspaceForUser(user.id)
+      } = await withTimeout(fetchWorkspaceForUser(user.id), 12000, 'fetchWorkspaceForUser')
       if (error) throw error
 
       if (!prof) {
         const { error: upErr } = await upsertProfileAfterSignup(user, user.user_metadata?.full_name)
         if (upErr) throw upErr
-        const again = await fetchWorkspaceForUser(user.id)
+        const again = await withTimeout(fetchWorkspaceForUser(user.id), 12000, 'fetchWorkspaceForUser (retry)')
         prof = again.profile
         list = again.stores
         sub = again.activeSubscription
@@ -65,12 +75,21 @@ export function DashboardWorkspaceProvider({ children }) {
       setPrimaryBusinessIdState(nextPrimary)
       if (nextPrimary) setStoredPrimaryBusinessId(nextPrimary)
     } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e)
       if (import.meta.env.DEV) {
         const err = /** @type {{ message?: string, details?: string, code?: string }} */ (e)
         console.error('[workspace]', err?.message ?? e, err?.details, err?.code)
       }
+      const looksLikeCors =
+        /access control checks/i.test(msg) ||
+        /cors/i.test(msg) ||
+        /failed to fetch/i.test(msg) ||
+        /networkerror/i.test(msg)
+
       setLoadError(
-        'No se pudieron cargar los datos. Intenta de nuevo más tarde o contacta soporte.',
+        looksLikeCors
+          ? 'El navegador bloqueó la conexión a Supabase por CORS. En Supabase → Project Settings → API → CORS (Allowed Origins), agrega tu origin (ej. http://localhost:5173) y recarga.'
+          : 'No se pudieron cargar los datos. Cierra sesión y vuelve a iniciar, o reintenta.',
       )
       setProfile(null)
       setStores([])

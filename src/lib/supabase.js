@@ -100,7 +100,22 @@ export async function fetchUserBusinessesPreview(userId) {
   if (!isValidUserId(userId)) {
     return { data: [], error: null }
   }
-  return supabase.from('businesses').select('id').eq('user_id', userId).limit(1)
+  // 1) Dueño
+  const owned = await supabase.from('businesses').select('id').eq('user_id', userId).limit(1)
+  if (owned.error) return owned
+  if ((owned.data?.length ?? 0) > 0) return owned
+
+  // 2) Miembro (fallback). Esto evita mandar a onboarding a usuarios que ya
+  // pertenecen a un negocio pero no son dueños.
+  const mem = await supabase
+    .from('business_members')
+    .select('business_id')
+    .eq('user_id', userId)
+    .limit(1)
+  if (mem.error) return { data: [], error: mem.error }
+  if ((mem.data?.length ?? 0) > 0) return { data: [{ id: mem.data[0].business_id }], error: null }
+
+  return { data: [], error: null }
 }
 
 /** @param {string} userId */

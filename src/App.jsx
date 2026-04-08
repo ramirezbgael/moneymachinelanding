@@ -2,6 +2,7 @@ import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 import { AuthProvider } from './context/AuthProvider'
 import { VerificationGateProvider } from './context/VerificationGateContext'
 import { ProtectedRoute } from './components/ProtectedRoute'
+import { ErrorBoundary } from './components/ErrorBoundary'
 import LandingPage from './pages/LandingPage'
 import PublicPage from './pages/PublicPage'
 import SignupPage from './pages/SignupPage'
@@ -38,18 +39,22 @@ export default function App() {
             <Route
               path="/onboarding"
               element={
-                <ProtectedRoute>
-                  <OnboardingPage />
-                </ProtectedRoute>
+                <ErrorBoundary>
+                  <ProtectedRoute>
+                    <OnboardingPage />
+                  </ProtectedRoute>
+                </ErrorBoundary>
               }
             />
             <Route
               element={
-                <ProtectedRoute>
-                  <DashboardWorkspaceProvider>
-                    <DashboardLayout />
-                  </DashboardWorkspaceProvider>
-                </ProtectedRoute>
+                <ErrorBoundary>
+                  <ProtectedRoute>
+                    <DashboardWorkspaceProvider>
+                      <DashboardLayout />
+                    </DashboardWorkspaceProvider>
+                  </ProtectedRoute>
+                </ErrorBoundary>
               }
             >
               <Route path="/dashboard" element={<DashboardHomePage />} />

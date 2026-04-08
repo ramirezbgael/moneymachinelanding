@@ -45,9 +45,19 @@ export default function DashboardLayout() {
   } = useDashboardWorkspace()
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [upgrading, setUpgrading] = useState(false)
+  const [stuck, setStuck] = useState(false)
   const [searchParams, setSearchParams] = useSearchParams()
   const location = useLocation()
   const checkoutOk = searchParams.get('checkout') === 'success'
+
+  useEffect(() => {
+    if (!loading) {
+      setStuck(false)
+      return
+    }
+    const t = setTimeout(() => setStuck(true), 15000)
+    return () => clearTimeout(t)
+  }, [loading])
 
   useEffect(() => {
     if (checkoutOk !== true) return
@@ -225,9 +235,23 @@ export default function DashboardLayout() {
 
         <main className="relative z-10 px-4 py-8 sm:px-6 lg:px-8">
           {loading ? (
-            <div className="flex justify-center py-24">
-              <div className="h-10 w-10 animate-spin rounded-full border-2 border-[#22c55e]/30 border-t-[#22c55e]" />
-            </div>
+            stuck ? (
+              <div className="glass rounded-2xl border border-yellow-500/20 p-6 text-[#e2e8f0]">
+                <p className="text-sm text-[#94a3b8]">
+                  Sigue cargando demasiado. Normalmente es una sesión de Supabase atorada o una consulta bloqueada por red/RLS.
+                </p>
+                <div className="mt-4 flex flex-wrap gap-2">
+                  <Button variant="secondary" onClick={() => refresh()}>
+                    Reintentar
+                  </Button>
+                  <Button onClick={() => signOut()}>Cerrar sesión</Button>
+                </div>
+              </div>
+            ) : (
+              <div className="flex justify-center py-24">
+                <div className="h-10 w-10 animate-spin rounded-full border-2 border-[#22c55e]/30 border-t-[#22c55e]" />
+              </div>
+            )
           ) : loadError ? (
             <div className="glass rounded-2xl border border-red-500/20 p-6 text-red-200">
               <p>{loadError}</p>
