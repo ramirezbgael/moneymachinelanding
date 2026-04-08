@@ -12,8 +12,8 @@
  *
  * Stripe Dashboard → Webhooks → URL:
  *   https://<PROJECT_REF>.supabase.co/functions/v1/stripe-webhook
- * Eventos: checkout.session.completed, customer.subscription.created,
- *   customer.subscription.updated, customer.subscription.deleted
+ * Eventos: checkout.session.completed, invoice.paid,
+ *   invoice.payment_failed, customer.subscription.deleted
  */
 
 import { serve } from 'https://deno.land/std@0.177.0/http/server.ts'
@@ -83,6 +83,183 @@ async function persistSubscriptionAndProfile(
   }
 }
 
+async function resolveUserIdBySubscriptionId(
+  supabase: SupabaseClient,
+  subscriptionId: string,
+): Promise<string | null> {
+  const { data } = await supabase
+    .from('subscriptions')
+    .select('user_id')
+    .eq('stripe_subscription_id', subscriptionId)
+    .maybeSingle()
+  return data?.user_id ?? null
+}
+
+async function resolveUserIdByCustomerId(
+  supabase: SupabaseClient,
+  customerId: string,
+): Promise<string | null> {
+  const { data } = await supabase
+    .from('subscriptions')
+    .select('user_id')
+    .eq('stripe_customer_id', customerId)
+    .order('updated_at', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+  return data?.user_id ?? null
+}
+
+async function handleWebhookEvent(supabase: SupabaseClient, event: Stripe.Event) {
+  switch (event.type) {
+    case 'checkout.session.completed': {
+      const session = event.data.object as Stripe.Checkout.Session
+      if (session.mode !== 'subscription') break
+
+      const fromMeta =
+        typeof session.metadata?.supabase_user_id === 'string'
+          ? session.metadata.supabase_user_id.trim()
+          : ''
+      const fromClientRef =
+        typeof session.client_reference_id === 'string' ? session.client_reference_id.trim() : ''
+      const userId =
+        (fromMeta && looksLikeUuid(fromMeta) ? fromMeta : '') ||
+        (fromClientRef && looksLikeUuid(fromClientRef) ? fromClientRef : '') ||
+        null
+
+      if (!userId) {
+        console.error(
+          'checkout.session.completed: missing valid user id (metadata.supabase_user_id or client_reference_id UUID)',
+        )
+        break
+      }
+
+      const subId =
+        typeof session.subscription === 'string' ? session.subscription : session.subscription?.id
+      const custId = typeof session.customer === 'string' ? session.customer : session.customer?.id
+      if (!subId || !custId) {
+        console.error('checkout.session.completed: missing subscription or customer id')
+        break
+      }
+
+      const sub = await stripe.subscriptions.retrieve(subId)
+      await persistSubscriptionAndProfile(
+        supabase,
+        userId,
+        sub,
+        session.metadata?.plan_tier ?? undefined,
+      )
+      break
+    }
+
+    case 'invoice.paid': {
+      const invoice = event.data.object as Stripe.Invoice
+      const subId =
+        typeof invoice.subscription === 'string'
+          ? invoice.subscription
+          : invoice.subscription?.id ?? null
+      if (!subId) {
+        console.error('invoice.paid: missing subscription id')
+        break
+      }
+
+      const sub = await stripe.subscriptions.retrieve(subId)
+      let userId =
+        typeof sub.metadata?.supabase_user_id === 'string' && looksLikeUuid(sub.metadata.supabase_user_id)
+          ? sub.metadata.supabase_user_id
+          : null
+      if (!userId) {
+        userId = await resolveUserIdBySubscriptionId(supabase, sub.id)
+      }
+      if (!userId) {
+        const custId = typeof sub.customer === 'string' ? sub.customer : sub.customer?.id
+        if (custId) userId = await resolveUserIdByCustomerId(supabase, custId)
+      }
+      if (!userId) {
+        console.error('invoice.paid: could not resolve user id')
+        break
+      }
+
+      await persistSubscriptionAndProfile(supabase, userId, sub)
+      break
+    }
+
+    case 'invoice.payment_failed': {
+      const invoice = event.data.object as Stripe.Invoice
+      const subId =
+        typeof invoice.subscription === 'string'
+          ? invoice.subscription
+          : invoice.subscription?.id ?? null
+      const custId =
+        typeof invoice.customer === 'string' ? invoice.customer : invoice.customer?.id ?? null
+
+      let userId: string | null = null
+      if (subId) {
+        userId = await resolveUserIdBySubscriptionId(supabase, subId)
+      }
+      if (!userId && custId) {
+        userId = await resolveUserIdByCustomerId(supabase, custId)
+      }
+      if (!userId) {
+        console.error('invoice.payment_failed: could not resolve user id')
+        break
+      }
+
+      if (subId) {
+        const { error: upErr } = await supabase
+          .from('subscriptions')
+          .update({
+            status: 'past_due',
+            updated_at: new Date().toISOString(),
+          })
+          .eq('stripe_subscription_id', subId)
+        if (upErr) console.error('subscriptions update (invoice.payment_failed):', upErr)
+      }
+
+      const { error: pErr } = await supabase
+        .from('profiles')
+        .update({ plan: 'free', billing_status: 'past_due' })
+        .eq('id', userId)
+      if (pErr) console.error('profiles update (invoice.payment_failed):', pErr)
+      break
+    }
+
+    case 'customer.subscription.deleted': {
+      const sub = event.data.object as Stripe.Subscription
+      let userId: string | null =
+        typeof sub.metadata?.supabase_user_id === 'string' ? sub.metadata.supabase_user_id : null
+      if (!userId) {
+        userId = await resolveUserIdBySubscriptionId(supabase, sub.id)
+      }
+      if (!userId) {
+        const custId = typeof sub.customer === 'string' ? sub.customer : sub.customer?.id
+        if (custId) userId = await resolveUserIdByCustomerId(supabase, custId)
+      }
+
+      const now = new Date().toISOString()
+      const { error: upErr } = await supabase
+        .from('subscriptions')
+        .update({
+          status: 'canceled',
+          updated_at: now,
+        })
+        .eq('stripe_subscription_id', sub.id)
+      if (upErr) console.error('subscriptions update (deleted):', upErr)
+
+      if (userId) {
+        const { error: pErr } = await supabase
+          .from('profiles')
+          .update({ plan: 'free', billing_status: 'canceled' })
+          .eq('id', userId)
+        if (pErr) console.error('profiles update (subscription deleted):', pErr)
+      }
+      break
+    }
+
+    default:
+      break
+  }
+}
+
 serve(async (req) => {
   if (req.method !== 'POST') {
     return new Response('Method Not Allowed', { status: 405 })
@@ -116,157 +293,15 @@ serve(async (req) => {
   }
 
   const supabase = createClient(supabaseUrl, serviceKey)
-
-  try {
-    switch (event.type) {
-      case 'checkout.session.completed': {
-        const session = event.data.object as Stripe.Checkout.Session
-        if (session.mode !== 'subscription') break
-
-        const fromMeta =
-          typeof session.metadata?.supabase_user_id === 'string'
-            ? session.metadata.supabase_user_id.trim()
-            : ''
-        const fromClientRef =
-          typeof session.client_reference_id === 'string' ? session.client_reference_id.trim() : ''
-        const userId =
-          (fromMeta && looksLikeUuid(fromMeta) ? fromMeta : '') ||
-          (fromClientRef && looksLikeUuid(fromClientRef) ? fromClientRef : '') ||
-          null
-
-        if (!userId) {
-          console.error(
-            'checkout.session.completed: missing valid user id (metadata.supabase_user_id or client_reference_id UUID)',
-          )
-          break
-        }
-
-        const subId =
-          typeof session.subscription === 'string'
-            ? session.subscription
-            : session.subscription?.id
-        const custId =
-          typeof session.customer === 'string' ? session.customer : session.customer?.id
-        if (!subId || !custId) {
-          console.error('checkout.session.completed: missing subscription or customer id')
-          break
-        }
-
-        const sub = await stripe.subscriptions.retrieve(subId)
-        await persistSubscriptionAndProfile(
-          supabase,
-          userId,
-          sub,
-          session.metadata?.plan_tier ?? undefined,
-        )
-        break
-      }
-
-      case 'customer.subscription.created': {
-        const sub = event.data.object as Stripe.Subscription
-        const raw =
-          typeof sub.metadata?.supabase_user_id === 'string' ? sub.metadata.supabase_user_id.trim() : ''
-        if (!raw || !looksLikeUuid(raw)) {
-          console.error('customer.subscription.created: missing metadata.supabase_user_id (UUID)')
-          break
-        }
-        await persistSubscriptionAndProfile(supabase, raw, sub)
-        break
-      }
-
-      case 'customer.subscription.updated': {
-        const sub = event.data.object as Stripe.Subscription
-        let userId: string | undefined =
-          typeof sub.metadata?.supabase_user_id === 'string' ? sub.metadata.supabase_user_id : undefined
-        if (!userId || !looksLikeUuid(userId)) {
-          const { data } = await supabase
-            .from('subscriptions')
-            .select('user_id')
-            .eq('stripe_subscription_id', sub.id)
-            .maybeSingle()
-          userId = data?.user_id ?? undefined
-        }
-
-        const periodEnd = sub.current_period_end
-          ? new Date(sub.current_period_end * 1000).toISOString()
-          : null
-        const priceId = sub.items.data[0]?.price?.id ?? null
-        const now = new Date().toISOString()
-
-        const { error: upErr } = await supabase
-          .from('subscriptions')
-          .update({
-            status: sub.status,
-            current_period_end: periodEnd,
-            price_id: priceId,
-            updated_at: now,
-          })
-          .eq('stripe_subscription_id', sub.id)
-        if (upErr) console.error('subscriptions update (subscription.updated):', upErr)
-
-        if (userId) {
-          const activeLike = ['active', 'trialing', 'past_due'].includes(sub.status)
-          if (activeLike) {
-            const plan = profilePlanFromMetadata(sub.metadata?.plan_tier)
-            const { error: pErr } = await supabase
-              .from('profiles')
-              .update({ plan, billing_status: 'active' })
-              .eq('id', userId)
-            if (pErr) console.error('profiles update (reactivated):', pErr)
-          } else if (
-            sub.status === 'canceled' ||
-            sub.status === 'unpaid' ||
-            sub.status === 'incomplete_expired'
-          ) {
-            const { error: pErr } = await supabase
-              .from('profiles')
-              .update({ plan: 'free', billing_status: sub.status })
-              .eq('id', userId)
-            if (pErr) console.error('profiles update (downgrade):', pErr)
-          }
-        }
-        break
-      }
-
-      case 'customer.subscription.deleted': {
-        const sub = event.data.object as Stripe.Subscription
-        let userId: string | undefined = sub.metadata?.supabase_user_id
-        if (!userId) {
-          const { data } = await supabase
-            .from('subscriptions')
-            .select('user_id')
-            .eq('stripe_subscription_id', sub.id)
-            .maybeSingle()
-          userId = data?.user_id ?? undefined
-        }
-
-        const now = new Date().toISOString()
-        const { error: upErr } = await supabase
-          .from('subscriptions')
-          .update({
-            status: 'canceled',
-            updated_at: now,
-          })
-          .eq('stripe_subscription_id', sub.id)
-        if (upErr) console.error('subscriptions update (deleted):', upErr)
-
-        if (userId) {
-          const { error: pErr } = await supabase
-            .from('profiles')
-            .update({ plan: 'free', billing_status: 'canceled' })
-            .eq('id', userId)
-          if (pErr) console.error('profiles update (subscription deleted):', pErr)
-        }
-        break
-      }
-
-      default:
-        break
-    }
-  } catch (e) {
+  const work = handleWebhookEvent(supabase, event).catch((e) => {
     console.error('Webhook handler error:', e)
-    return new Response(JSON.stringify({ error: 'Handler failed' }), { status: 500 })
-  }
+  })
+
+  // Responde 200 inmediatamente para evitar reintentos por timeout de Stripe.
+  // En Supabase Edge, waitUntil mantiene la tarea viva en segundo plano.
+  // deno-lint-ignore no-explicit-any
+  const edgeRuntime = (globalThis as any).EdgeRuntime
+  if (edgeRuntime?.waitUntil) edgeRuntime.waitUntil(work)
 
   return new Response(JSON.stringify({ received: true }), {
     status: 200,
