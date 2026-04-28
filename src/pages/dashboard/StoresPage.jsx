@@ -52,18 +52,26 @@ export default function StoresPage() {
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
       <PageHeader
         title="Tiendas"
-        subtitle="Cada tienda tiene su propio POS. Abre el terminal o crea una nueva ubicación."
+        subtitle={
+          stores.length > 0
+            ? 'Tu cuenta incluye una sola tienda. Puedes abrir su POS en varios dispositivos con la misma sesión.'
+            : 'Crea tu primera tienda. Luego podrás abrir el POS en cualquier dispositivo.'
+        }
         action={
-          <Button onClick={() => setModal(true)}>
-            <Plus className="h-4 w-4" />
-            Crear tienda
-          </Button>
+          stores.length === 0 ? (
+            <Button onClick={() => setModal(true)}>
+              <Plus className="h-4 w-4" />
+              Crear tienda
+            </Button>
+          ) : null
         }
       />
 
       {stores.length === 0 ? (
         <Card>
-          <p className="text-[#94a3b8]">No hay tiendas todavía.</p>
+          <p className="text-[#94a3b8]">
+            No hay tiendas todavía. Tu suscripción incluye una sola tienda por cuenta.
+          </p>
           <Button className="mt-4" onClick={() => setModal(true)}>
             Crear la primera
           </Button>

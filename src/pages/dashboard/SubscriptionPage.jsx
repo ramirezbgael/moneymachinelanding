@@ -13,6 +13,7 @@ import { CurrentPlanCard } from '../../components/dashboard/CurrentPlanCard'
 import { useVerificationGate } from '../../context/VerificationGateContext'
 import { useLocale } from '../../i18n'
 import { Button, Card, PageHeader } from '../../components/dashboard/ui'
+import { ModalBackdrop, ModalPanel } from '../../components/Modal'
 
 export default function SubscriptionPage() {
   const { t } = useLocale()
@@ -26,6 +27,13 @@ export default function SubscriptionPage() {
   const [portalError, setPortalError] = useState('')
   const [syncBusy, setSyncBusy] = useState(false)
   const [syncHint, setSyncHint] = useState('')
+
+  const [cancelOpen, setCancelOpen] = useState(false)
+  const [cancelStep, setCancelStep] = useState(1)
+  const [cancelBusy, setCancelBusy] = useState(false)
+  const [cancelError, setCancelError] = useState('')
+  const [cancelConfirm, setCancelConfirm] = useState(false)
+  const [cancelReason, setCancelReason] = useState('')
 
   const proPlan = useMemo(() => t.plans.find((p) => p.tier === 'pro'), [t.plans])
   const businessPlan = useMemo(() => t.plans.find((p) => p.tier === 'business'), [t.plans])
@@ -80,6 +88,25 @@ export default function SubscriptionPage() {
     if (!res.ok) setPortalError(res.message ?? 'No se pudo abrir el portal de facturación.')
   }
 
+  const canCancel = Boolean(activeSubscription || latestSubscription)
+
+  async function handleCancelConfirm() {
+    setCancelBusy(true)
+    setCancelError('')
+    try {
+      const origin = typeof window !== 'undefined' ? window.location.origin : ''
+      const res = await openStripeBillingPortal({ returnOrigin: origin, openInNewTab: true })
+      if (!res.ok) {
+        setCancelError(res.message ?? 'No se pudo abrir el portal para cancelar.')
+        return
+      }
+      // Stripe gestiona la cancelación dentro del portal.
+      setCancelOpen(false)
+    } finally {
+      setCancelBusy(false)
+    }
+  }
+
   async function handleSyncStripe() {
     setSyncHint('')
     setPortalError('')
@@ -121,6 +148,33 @@ export default function SubscriptionPage() {
             onManageSubscription={handleManageFromCard}
           />
           {portalError ? <p className="mt-3 text-sm text-red-300">{portalError}</p> : null}
+          {canCancel ? (
+            <details className="mt-4 rounded-xl border border-white/5 bg-black/15 p-4 text-left">
+              <summary className="cursor-pointer text-sm text-[#64748b] transition-colors hover:text-[#94a3b8]">
+                Opciones avanzadas
+              </summary>
+              <div className="mt-3 space-y-3">
+                <p className="text-xs text-[#94a3b8]">
+                  Cancelar requiere confirmación en varios pasos.
+                </p>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  className="w-full sm:w-auto border-red-500/30 text-red-200 hover:border-red-400"
+                  disabled={cancelBusy}
+                  onClick={() => {
+                    setCancelError('')
+                    setCancelConfirm(false)
+                    setCancelReason('')
+                    setCancelStep(1)
+                    setCancelOpen(true)
+                  }}
+                >
+                  Iniciar cancelación
+                </Button>
+              </div>
+            </details>
+          ) : null}
           <details className="mt-4 rounded-xl border border-white/5 bg-black/15 p-4 text-left">
             <summary className="cursor-pointer text-sm text-[#64748b] transition-colors hover:text-[#94a3b8]">
               ¿El plan no coincide después de pagar?
@@ -284,6 +338,77 @@ export default function SubscriptionPage() {
           ) : null}
         </Card>
       </div>
+
+      {cancelOpen ? (
+        <ModalBackdrop onClose={() => !cancelBusy && setCancelOpen(false)}>
+          <ModalPanel>
+            {cancelStep === 1 ? (
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold text-white">Cancelar suscripción</h3>
+                <p className="text-sm text-[#94a3b8]">
+                  Vas a detener los próximos cobros. La cancelación se completa en el portal seguro de Stripe.
+                </p>
+                <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
+                  <Button variant="secondary" onClick={() => setCancelOpen(false)} disabled={cancelBusy}>
+                    Volver
+                  </Button>
+                  <Button onClick={() => setCancelStep(2)} disabled={cancelBusy}>
+                    Continuar
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold text-white">Confirmación</h3>
+                <p className="text-sm text-[#94a3b8]">
+                  Para evitar cancelaciones accidentales, confirma la acción.
+                </p>
+                <label className="flex items-start gap-3 text-sm text-[#e2e8f0]">
+                  <input
+                    type="checkbox"
+                    checked={cancelConfirm}
+                    onChange={(e) => setCancelConfirm(e.target.checked)}
+                    disabled={cancelBusy}
+                    className="mt-1"
+                  />
+                  <span>
+                    Entiendo que se cancelarán los próximos cobros y tengo que gestionar el último paso en Stripe.
+                  </span>
+                </label>
+                <div>
+                  <label className="text-xs font-medium uppercase tracking-wider text-[#64748b]">Motivo (opcional)</label>
+                  <input
+                    type="text"
+                    value={cancelReason}
+                    onChange={(e) => setCancelReason(e.target.value)}
+                    disabled={cancelBusy}
+                    className="mt-2 w-full rounded-xl border border-white/10 bg-[#0c1016] px-4 py-2.5 text-sm text-white outline-none focus:border-[#22c55e]/50"
+                    placeholder="Ej. muy caro, necesito pausar…"
+                  />
+                </div>
+                {cancelError ? <p className="text-sm text-red-300">{cancelError}</p> : null}
+                <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
+                  <Button variant="secondary" onClick={() => setCancelStep(1)} disabled={cancelBusy}>
+                    Atrás
+                  </Button>
+                  <Button
+                    onClick={() => {
+                      if (!cancelConfirm) {
+                        setCancelError('Marca la casilla para continuar.')
+                        return
+                      }
+                      void handleCancelConfirm()
+                    }}
+                    disabled={cancelBusy}
+                  >
+                    {cancelBusy ? 'Abriendo…' : 'Confirmar y continuar en Stripe'}
+                  </Button>
+                </div>
+              </div>
+            )}
+          </ModalPanel>
+        </ModalBackdrop>
+      ) : null}
     </motion.div>
   )
 }

@@ -1,5 +1,5 @@
 /* eslint-disable react-refresh/only-export-components -- hooks exportados junto al provider */
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { isValidUserId } from '../lib/ids'
 import { upsertProfileAfterSignup } from '../lib/supabase'
@@ -16,6 +16,7 @@ const DashboardWorkspaceContext = createContext(null)
 
 export function DashboardWorkspaceProvider({ children }) {
   const { user } = useAuth()
+  const refreshPromiseRef = useRef(null)
   const [profile, setProfile] = useState(null)
   const [stores, setStores] = useState([])
   const [primaryBusinessId, setPrimaryBusinessIdState] = useState(null)
@@ -44,8 +45,12 @@ export function DashboardWorkspaceProvider({ children }) {
       setLoading(false)
       return
     }
+    if (refreshPromiseRef.current) {
+      return refreshPromiseRef.current
+    }
     setLoadError('')
     setLoading(true)
+    const run = (async () => {
     try {
       let {
         profile: prof,
@@ -84,11 +89,12 @@ export function DashboardWorkspaceProvider({ children }) {
         /access control checks/i.test(msg) ||
         /cors/i.test(msg) ||
         /failed to fetch/i.test(msg) ||
+        /load failed/i.test(msg) ||
         /networkerror/i.test(msg)
 
       setLoadError(
         looksLikeCors
-          ? 'El navegador bloqueó la conexión a Supabase por CORS. En Supabase → Project Settings → API → CORS (Allowed Origins), agrega tu origin (ej. http://localhost:5173) y recarga.'
+          ? 'El navegador bloqueó la conexión a Supabase (CORS). En Supabase → Project Settings → API → Allowed CORS origins, agrega el origin EXACTO de la barra de direcciones: http://localhost:5173 y http://127.0.0.1:5173 (y en prod tu dominio Netlify). Guarda y recarga.'
           : 'No se pudieron cargar los datos. Cierra sesión y vuelve a iniciar, o reintenta.',
       )
       setProfile(null)
@@ -98,6 +104,11 @@ export function DashboardWorkspaceProvider({ children }) {
     } finally {
       setLoading(false)
     }
+    })()
+    refreshPromiseRef.current = run.finally(() => {
+      refreshPromiseRef.current = null
+    })
+    return refreshPromiseRef.current
   }, [user])
 
   useEffect(() => {

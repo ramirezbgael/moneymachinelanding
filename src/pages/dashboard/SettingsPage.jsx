@@ -1,14 +1,21 @@
 import { useCallback, useEffect, useState } from 'react'
 import { motion } from 'framer-motion'
-import { ImagePlus } from 'lucide-react'
+import { ImagePlus, Trash2 } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { useRequireStores, useDashboardWorkspace } from '../../context/DashboardWorkspaceContext'
 import { Button, Card, Input, Label, PageHeader, Spinner } from '../../components/dashboard/ui'
+import { useAuth } from '../../hooks/useAuth'
+import { getAuthEmail } from '../../lib/authUtils'
 
 export default function SettingsPage() {
   useRequireStores()
-  const { primaryBusiness, refresh } = useDashboardWorkspace()
+  const { primaryBusiness, refresh, profile } = useDashboardWorkspace()
+  const { user, refreshSession, signOut } = useAuth()
   const biz = primaryBusiness
+  const [accountName, setAccountName] = useState(profile?.name ?? '')
+  const [accountEmail, setAccountEmail] = useState(getAuthEmail(user) || profile?.email || '')
+  const [updatingAccount, setUpdatingAccount] = useState(false)
+  const [accountMessage, setAccountMessage] = useState('')
   const [name, setName] = useState('')
   const [themeColor, setThemeColor] = useState('#22c55e')
   const [logoUrl, setLogoUrl] = useState('')
@@ -22,6 +29,44 @@ export default function SettingsPage() {
     setThemeColor(biz.theme_color || '#22c55e')
     setLogoUrl(biz.logo_url || '')
   }, [biz])
+
+  useEffect(() => {
+    setAccountName(profile?.name ?? '')
+    setAccountEmail(getAuthEmail(user) || profile?.email || '')
+  }, [profile, user])
+
+  const saveAccount = useCallback(async () => {
+    setUpdatingAccount(true)
+    setAccountMessage('')
+    try {
+      // Actualizar nombre en profiles
+      if (profile?.id) {
+        const { error: pErr } = await supabase
+          .from('profiles')
+          .update({ name: accountName.trim() || null })
+          .eq('id', profile.id)
+        if (pErr) throw pErr
+      }
+
+      // Actualizar email en auth (dispara correo de confirmación)
+      const trimmedEmail = accountEmail.trim()
+      if (trimmedEmail && trimmedEmail !== getAuthEmail(user)) {
+        const { error: eErr } = await supabase.auth.updateUser({ email: trimmedEmail })
+        if (eErr) throw eErr
+      }
+
+      await refreshSession()
+      await refresh()
+      setAccountMessage(
+        'Datos de cuenta actualizados. Si cambiaste el correo, revisa tu bandeja para confirmar el nuevo email.',
+      )
+    } catch (e) {
+      if (import.meta.env.DEV) console.error(e)
+      setAccountMessage('No se pudieron actualizar los datos de cuenta. Intenta de nuevo.')
+    } finally {
+      setUpdatingAccount(false)
+    }
+  }, [accountName, accountEmail, profile?.id, user, refreshSession, refresh])
 
   const saveBusiness = useCallback(async () => {
     if (!biz?.id) return
@@ -77,11 +122,39 @@ export default function SettingsPage() {
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
       <PageHeader
-        title="Ajustes"
-        subtitle="Nombre del negocio, marca y color de acento para la consola."
+        title="Cuenta"
+        subtitle="Configura tus datos de cuenta y el nombre/branding de tu negocio."
       />
 
       <div className="max-w-xl space-y-6">
+        <Card>
+          <h3 className="text-sm font-semibold text-white">Datos de cuenta</h3>
+          <div className="mt-4 space-y-4">
+            <div>
+              <Label>Nombre</Label>
+              <Input value={accountName} onChange={(e) => setAccountName(e.target.value)} />
+            </div>
+            <div>
+              <Label>Correo de acceso</Label>
+              <Input
+                type="email"
+                value={accountEmail}
+                onChange={(e) => setAccountEmail(e.target.value)}
+                placeholder="tucorreo@ejemplo.com"
+              />
+              <p className="mt-1 text-xs text-[#64748b]">
+                Si cambias el correo, te enviaremos un email de confirmación. El nuevo correo no será definitivo hasta que lo confirmes.
+              </p>
+            </div>
+          </div>
+          <div className="mt-4 flex items-center gap-2">
+            <Button disabled={updatingAccount} onClick={saveAccount}>
+              {updatingAccount ? <Spinner className="!h-5 !w-5" /> : 'Guardar cuenta'}
+            </Button>
+            {accountMessage ? <p className="text-xs text-[#86efac]">{accountMessage}</p> : null}
+          </div>
+        </Card>
+
         <Card>
           <h3 className="text-sm font-semibold text-white">Negocio</h3>
           <div className="mt-4 space-y-4">
@@ -122,6 +195,24 @@ export default function SettingsPage() {
         <Button disabled={saving || !biz} onClick={saveBusiness}>
           {saving ? <Spinner className="!h-5 !w-5" /> : 'Guardar cambios'}
         </Button>
+
+        <Card>
+          <h3 className="text-sm font-semibold text-white">Eliminar cuenta</h3>
+          <p className="mt-2 text-xs text-[#f97373]">
+            Esta acción requiere una función de servidor para borrar tu usuario de forma segura. Por ahora, si necesitas eliminar tu cuenta,
+            cierra sesión y contáctanos desde el formulario de soporte.
+          </p>
+          <div className="mt-3">
+            <Button
+              variant="secondary"
+              className="border-red-500/40 text-red-200 hover:border-red-400 hover:text-red-100"
+              onClick={() => signOut()}
+            >
+              <Trash2 className="h-4 w-4" />
+              Cerrar sesión
+            </Button>
+          </div>
+        </Card>
       </div>
     </motion.div>
   )

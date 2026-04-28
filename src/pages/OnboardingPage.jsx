@@ -29,8 +29,9 @@ export default function OnboardingPage() {
     if (loading || !user) return
     let cancelled = false
     ;(async () => {
-      const { data } = await fetchUserBusinessesPreview(user.id)
+      const { data, error } = await fetchUserBusinessesPreview(user.id)
       if (!cancelled) {
+        if (import.meta.env.DEV) console.log('[onboarding] businesses preview', { n: data?.length ?? 0, error })
         setHasBusiness((data?.length ?? 0) > 0)
         setChecking(false)
       }

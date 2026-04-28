@@ -1,6 +1,17 @@
 import { supabase } from './supabase'
 
 /**
+ * Algunos navegadores reportan los fallos CORS/preflight con textos distintos
+ * ("Load failed", "Failed to fetch", "access control checks", etc.).
+ * Normalizamos esa detección para devolver mensajes más útiles.
+ * @param {unknown} error
+ */
+function isLikelyNetworkOrCorsError(error) {
+  const msg = error instanceof Error ? error.message : String(error ?? '')
+  return /(load failed|failed to fetch|networkerror|access control checks|preflight)/i.test(msg)
+}
+
+/**
  * Price IDs de Stripe (no uses prod_..., usa price_... de cada precio en el dashboard).
  * Productos de referencia:
  * - pro mensual: prod_UCFGRksv2lpXnE
@@ -80,10 +91,7 @@ export async function startStripeCheckout({
     })
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e)
-    const isNetwork =
-      msg.includes('Load failed') ||
-      msg.includes('Failed to fetch') ||
-      msg.includes('NetworkError')
+    const isNetwork = isLikelyNetworkOrCorsError(e)
     return {
       ok: false,
       error: 'fetch_failed',
@@ -140,8 +148,14 @@ export async function startStripeCheckout({
 /**
  * Abre el Customer Portal de Stripe (gestionar método de pago, cancelar, facturas).
  * Requiere Edge Function «create-billing-portal-session» desplegada.
+ *
+ * Nota: tu Edge Function calcula el returnUrl como `${origin}/subscription`, así que
+ * por eso pasamos un "origin" (ej. https://moneymachinecom.netlify.app), no una ruta completa.
+ *
+ * @param {{ returnOrigin?: string, openInNewTab?: boolean }=} opts
  */
-export async function openStripeBillingPortal() {
+export async function openStripeBillingPortal(opts = {}) {
+  const { returnOrigin, openInNewTab = true } = opts
   const baseUrl = import.meta.env.VITE_SUPABASE_URL
   const anon = import.meta.env.VITE_SUPABASE_ANON_KEY
   if (!baseUrl || !anon) {
@@ -150,7 +164,11 @@ export async function openStripeBillingPortal() {
 
   const { data: { session } } = await supabase.auth.getSession()
   const origin = typeof window !== 'undefined' ? window.location.origin : ''
+  const resolvedOrigin = returnOrigin && typeof returnOrigin === 'string' ? returnOrigin : origin
   const url = `${baseUrl.replace(/\/$/, '')}/functions/v1/create-billing-portal-session`
+
+  const MSG_NO_FUNCTION =
+    'No se pudo abrir el portal de Stripe porque la Edge Function «create-billing-portal-session» no responde (típico: no está desplegada o CORS/red). Despliega: supabase functions deploy create-billing-portal-session --no-verify-jwt. En Supabase → Settings → API agrega tu origin en CORS (localhost y tu dominio).'
 
   let res
   try {
@@ -161,11 +179,12 @@ export async function openStripeBillingPortal() {
         Authorization: `Bearer ${session?.access_token ?? anon}`,
         apikey: anon,
       },
-      body: JSON.stringify({ returnUrl: origin }),
+      body: JSON.stringify({ returnUrl: resolvedOrigin }),
     })
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e)
-    return { ok: false, message: `No se pudo abrir el portal: ${msg}` }
+    const isNetwork = isLikelyNetworkOrCorsError(e)
+    return { ok: false, message: isNetwork ? MSG_NO_FUNCTION : `No se pudo abrir el portal: ${msg}` }
   }
 
   const data = await res.json().catch(() => ({}))
@@ -186,6 +205,18 @@ export async function openStripeBillingPortal() {
   }
 
   if (data.url) {
+    if (openInNewTab) {
+      const w = window.open(data.url, '_blank', 'noopener,noreferrer')
+      if (!w) {
+        return {
+          ok: false,
+          message:
+            'La ventana emergente fue bloqueada por el navegador. Permite pop-ups para abrir el portal de Stripe.',
+        }
+      }
+      return { ok: true }
+    }
+
     window.location.href = data.url
     return { ok: true }
   }
@@ -227,10 +258,7 @@ export async function syncStripeSubscriptionFromServer() {
     })
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e)
-    const isNetwork =
-      msg.includes('Load failed') ||
-      msg.includes('Failed to fetch') ||
-      msg.includes('NetworkError')
+    const isNetwork = isLikelyNetworkOrCorsError(e)
     return {
       ok: false,
       message: isNetwork ? MSG_SYNC_NOT_DEPLOYED : `No se pudo llamar a la función: ${msg}`,

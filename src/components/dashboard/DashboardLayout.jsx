@@ -22,11 +22,8 @@ import { syncStripeSubscriptionFromServer } from '../../lib/stripeCheckout'
 
 const nav = [
   { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { to: '/stores', label: 'Tiendas', icon: Store },
-  { to: '/users', label: 'Usuarios', icon: Users },
-  { to: '/modules', label: 'Módulos', icon: Package },
+  { to: '/settings', label: 'Cuenta', icon: Settings },
   { to: '/subscription', label: 'Suscripción', icon: CreditCard },
-  { to: '/settings', label: 'Ajustes', icon: Settings },
 ]
 
 export default function DashboardLayout() {
@@ -268,30 +265,35 @@ export default function DashboardLayout() {
       <AnimatePresence>
         {showPaywall && location.pathname !== '/subscription' && (
           <motion.div
-            key="paywall"
-            role="presentation"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[200] flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm"
+            key="paywall-banner"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 20 }}
+            className="fixed bottom-4 left-4 right-4 z-[200] mx-auto max-w-3xl rounded-2xl border border-yellow-500/30 bg-[#1f2937]/95 p-4 text-sm text-[#e5e7eb] shadow-xl backdrop-blur"
           >
-            <ModalPanel>
-              <h2 className="text-xl font-semibold text-white">Tu prueba terminó</h2>
-              <p className="mt-2 text-sm text-[#94a3b8]">
-                Pásate a Pro para seguir usando MoneyMachine sin límites.
-              </p>
-              <div className="mt-6 flex flex-col gap-3">
-                <Button disabled={upgrading} onClick={handleUpgradePro}>
-                  {upgrading ? '…' : 'Actualizar a Pro (demo)'}
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <p className="font-semibold text-yellow-300">Tu prueba terminó</p>
+                <p className="mt-1 text-xs text-[#9ca3af]">
+                  Puedes seguir usando el panel, pero algunas acciones podrían requerir activar un plan de pago.
+                </p>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  size="sm"
+                  disabled={upgrading}
+                  onClick={handleUpgradePro}
+                >
+                  {upgrading ? '…' : 'Activar Pro (demo)'}
                 </Button>
                 <Link
                   to="/subscription"
-                  className="flex w-full items-center justify-center rounded-xl border border-white/10 py-3 text-sm font-semibold text-white hover:border-[#22c55e]/40"
+                  className="inline-flex items-center justify-center rounded-xl border border-white/15 px-3 py-2 text-xs font-semibold text-white hover:border-[#22c55e]/40"
                 >
-                  Ver suscripción y Stripe
+                  Ver suscripción
                 </Link>
               </div>
-            </ModalPanel>
+            </div>
           </motion.div>
         )}
       </AnimatePresence>

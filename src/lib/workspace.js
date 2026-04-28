@@ -18,29 +18,37 @@ export async function fetchWorkspaceForUser(userId) {
   }
 
   try {
+    const t0 = Date.now()
     const { data: profile, error: pErr } = await supabase
       .from('profiles')
       .select('*')
       .eq('id', userId)
       .maybeSingle()
+    if (import.meta.env.DEV) console.log('[workspace] profiles', { ms: Date.now() - t0, ok: !pErr, pErr })
     if (pErr) throw pErr
 
+    const t1 = Date.now()
     const { data: owned, error: oErr } = await supabase
       .from('businesses')
       .select('*')
       .eq('user_id', userId)
+    if (import.meta.env.DEV) console.log('[workspace] businesses owned', { ms: Date.now() - t1, n: owned?.length ?? 0, oErr })
     if (oErr) throw oErr
 
+    const t2 = Date.now()
     const { data: memberships, error: mErr } = await supabase
       .from('business_members')
       .select('business_id')
       .eq('user_id', userId)
+    if (import.meta.env.DEV) console.log('[workspace] business_members', { ms: Date.now() - t2, n: memberships?.length ?? 0, mErr })
     if (mErr) throw mErr
 
     const memberIds = [...new Set((memberships ?? []).map((m) => m.business_id).filter(Boolean))]
     let memberStores = []
     if (memberIds.length > 0) {
+      const t3 = Date.now()
       const { data: ms, error: msErr } = await supabase.from('businesses').select('*').in('id', memberIds)
+      if (import.meta.env.DEV) console.log('[workspace] businesses via membership', { ms: Date.now() - t3, n: ms?.length ?? 0, msErr })
       if (msErr) throw msErr
       memberStores = ms ?? []
     }
@@ -54,6 +62,7 @@ export async function fetchWorkspaceForUser(userId) {
     )
 
     let activeSubscription = null
+    const t4 = Date.now()
     const { data: subRow, error: subErr } = await supabase
       .from('subscriptions')
       .select('id, status, stripe_subscription_id, current_period_end')
@@ -62,11 +71,13 @@ export async function fetchWorkspaceForUser(userId) {
       .order('created_at', { ascending: false })
       .limit(1)
       .maybeSingle()
+    if (import.meta.env.DEV) console.log('[workspace] subscriptions active', { ms: Date.now() - t4, ok: !subErr, subErr })
     if (!subErr) {
       activeSubscription = subRow
     }
 
     let latestSubscription = null
+    const t5 = Date.now()
     const { data: latestRow, error: latestErr } = await supabase
       .from('subscriptions')
       .select('id, status, stripe_subscription_id, current_period_end, updated_at')
@@ -74,12 +85,14 @@ export async function fetchWorkspaceForUser(userId) {
       .order('updated_at', { ascending: false })
       .limit(1)
       .maybeSingle()
+    if (import.meta.env.DEV) console.log('[workspace] subscriptions latest', { ms: Date.now() - t5, ok: !latestErr, latestErr })
     if (!latestErr) {
       latestSubscription = latestRow
     }
 
     return { profile, stores, activeSubscription, latestSubscription, error: null }
   } catch (e) {
+    if (import.meta.env.DEV) console.log('[workspace] fetchWorkspaceForUser failed', e)
     return {
       profile: null,
       stores: [],
@@ -92,7 +105,16 @@ export async function fetchWorkspaceForUser(userId) {
 
 /** @param {unknown} e */
 function toWorkspaceError(e) {
-  if (e instanceof Error) return e
+  if (e instanceof Error) {
+    const m = e.message || ''
+    // Safari: fetch bloqueado por CORS suele llegar como TypeError "Load failed" sin más detalle.
+    if (/^load failed$/i.test(m.trim())) {
+      return new Error(
+        'Load failed (suele ser CORS o red). Añade el origin exacto de esta app en Supabase → Settings → API → CORS (p. ej. http://localhost:5173).',
+      )
+    }
+    return e
+  }
   if (e && typeof e === 'object') {
     const o = /** @type {Record<string, unknown>} */ (e)
     const parts = [o.message, o.details, o.hint, o.code].filter(Boolean)

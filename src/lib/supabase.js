@@ -100,22 +100,39 @@ export async function fetchUserBusinessesPreview(userId) {
   if (!isValidUserId(userId)) {
     return { data: [], error: null }
   }
-  // 1) Dueño
+  // Misma lógica que fetchWorkspaceForUser: solo “hay negocio” si existe fila en `businesses`
+  // que el usuario puede leer (dueño o miembro). Si solo hay `business_members` huérfano,
+  // no devolver filas — evita el bucle /dashboard ↔ /onboarding.
+
+  const t0 = Date.now()
   const owned = await supabase.from('businesses').select('id').eq('user_id', userId).limit(1)
+  if (import.meta.env.DEV)
+    console.log('[bizPreview] businesses owned', { ms: Date.now() - t0, n: owned.data?.length ?? 0, error: owned.error })
   if (owned.error) return owned
   if ((owned.data?.length ?? 0) > 0) return owned
 
-  // 2) Miembro (fallback). Esto evita mandar a onboarding a usuarios que ya
-  // pertenecen a un negocio pero no son dueños.
+  const t1 = Date.now()
   const mem = await supabase
     .from('business_members')
     .select('business_id')
     .eq('user_id', userId)
-    .limit(1)
+  if (import.meta.env.DEV)
+    console.log('[bizPreview] business_members', { ms: Date.now() - t1, n: mem.data?.length ?? 0, error: mem.error })
   if (mem.error) return { data: [], error: mem.error }
-  if ((mem.data?.length ?? 0) > 0) return { data: [{ id: mem.data[0].business_id }], error: null }
 
-  return { data: [], error: null }
+  const memberIds = [...new Set((mem.data ?? []).map((m) => m.business_id).filter(Boolean))]
+  if (memberIds.length === 0) return { data: [], error: null }
+
+  const t2 = Date.now()
+  const viaMembership = await supabase.from('businesses').select('id').in('id', memberIds).limit(1)
+  if (import.meta.env.DEV)
+    console.log('[bizPreview] businesses via membership', {
+      ms: Date.now() - t2,
+      n: viaMembership.data?.length ?? 0,
+      error: viaMembership.error,
+    })
+  if (viaMembership.error) return viaMembership
+  return viaMembership
 }
 
 /** @param {string} userId */
@@ -132,9 +149,13 @@ export async function userHasBusiness(userId) {
  * @param {string} businessType
  */
 export async function createBusinessAndMembership(businessName, businessType) {
+  if (import.meta.env.DEV)
+    console.log('[onboarding] rpc create_business_and_membership', { businessName, businessType })
   const { data, error } = await supabase.rpc('create_business_and_membership', {
     p_name: businessName,
     p_type: businessType || 'store',
   })
+  if (import.meta.env.DEV)
+    console.log('[onboarding] rpc result', { businessId: data, ok: !error, error })
   return { businessId: data, error }
 }
