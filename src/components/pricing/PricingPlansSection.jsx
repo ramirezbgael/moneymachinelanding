@@ -29,9 +29,9 @@ export function PricingPlansSection({ cancelUrl, className = '' }) {
       <p className="mt-1 text-center text-xs text-[#6b7a88]">{t.pricingExcludesVat}</p>
       <p className="mt-2 text-center text-sm text-[#6ee7b7]/90">{t.trialNote}</p>
       <p className="mt-3 text-center text-xs text-[#5c6d7a]">{t.billingToggleHint}</p>
-      <div className="mt-4 flex flex-col items-center gap-2">
+      <div className="mt-6 flex flex-col items-center gap-3">
         <div
-          className="inline-flex rounded-full border border-[#2d404d] bg-[#0a1219] p-1"
+          className="inline-flex rounded-full border border-white/15 bg-[#101010] p-1"
           role="group"
           aria-label={t.billingToggleHint}
         >
@@ -59,7 +59,7 @@ export function PricingPlansSection({ cancelUrl, className = '' }) {
           </button>
         </div>
       </div>
-      <div className="mt-8 grid gap-5 lg:grid-cols-3">
+      <div className="mt-10 grid gap-6 lg:grid-cols-3">
         {t.plans.map((plan) => {
           const priceLabel =
             plan.tier === 'basic'
@@ -73,7 +73,7 @@ export function PricingPlansSection({ cancelUrl, className = '' }) {
             <motion.article
               key={plan.tier}
               whileHover={{ y: -6 }}
-              className={`glass rounded-2xl p-6 ${plan.featured ? 'scale-[1.02] border-[#58cfa2] green-glow' : 'border-[#2d404d]'}`}
+              className={`glass rounded-2xl p-7 ${plan.featured ? 'scale-[1.02] border-[#58cfa2] green-glow' : 'border-white/15'}`}
             >
               <p className="text-sm tracking-[0.2em] text-[#9cb5c4]">{plan.name}</p>
               <p className="mt-3 text-3xl font-semibold text-white">{priceLabel}</p>
@@ -115,7 +115,7 @@ export function PricingPlansSection({ cancelUrl, className = '' }) {
                     window.alert(`${t.checkoutErrorTitle}\n\n${result.message || result.error}`)
                   }
                 }}
-                className="mt-6 w-full rounded-xl border border-[#2d5a48] bg-[#0f241c] py-3 text-sm font-semibold text-[#b8ffe8] transition-colors hover:bg-[#153028] disabled:opacity-50"
+                className="mt-7 w-full rounded-xl border border-[#2d5a48] bg-[#121212] py-3 text-sm font-semibold text-[#b8ffe8] transition-colors hover:bg-[#1a1a1a] disabled:opacity-50"
               >
                 {alreadyPro
                   ? 'Ya tienes plan Pro'

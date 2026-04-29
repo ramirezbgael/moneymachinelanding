@@ -41,8 +41,8 @@ a:not([href]) {
 }
 
 .glass {
-  background: linear-gradient(145deg, rgba(17, 22, 30, 0.66), rgba(12, 17, 23, 0.38));
-  border: 1px solid rgba(133, 150, 170, 0.2);
+  background: linear-gradient(145deg, rgba(20, 20, 20, 0.82), rgba(10, 10, 10, 0.62));
+  border: 1px solid rgba(155, 155, 155, 0.18);
   backdrop-filter: blur(12px);
 }
 
