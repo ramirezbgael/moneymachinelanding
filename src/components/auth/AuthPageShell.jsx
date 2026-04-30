@@ -25,7 +25,8 @@ export function AuthPageShell({ mode, children }) {
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.45 }}
           >
-            <Link to="/" className="text-sm font-semibold tracking-wide text-[#00ff9f]">
+            <Link to="/" className="inline-flex items-center gap-2 text-sm font-semibold tracking-wide text-[#00ff9f]">
+              <img src="/icon.png" alt="MoneyMachine" className="h-7 w-7 rounded-md object-cover" />
               MoneyMachine
             </Link>
             <p className="mt-10 text-[11px] font-semibold uppercase tracking-[0.35em] text-[#5ee9b5]/85">

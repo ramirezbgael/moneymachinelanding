@@ -1,143 +1,134 @@
-import { useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { motion } from 'framer-motion'
-import { ExternalLink, Plus } from 'lucide-react'
-import { getOnboardingErrorMessage } from '../../lib/onboardingErrors'
-import { createBusinessAndMembership } from '../../lib/supabase'
-import { useVerificationGate } from '../../context/VerificationGateContext'
+import { MapPin } from 'lucide-react'
+import { supabase } from '../../lib/supabase'
 import { useRequireStores, useDashboardWorkspace } from '../../context/DashboardWorkspaceContext'
-import { getPosUrl } from '../../lib/workspace'
 import { Button, Card, Input, Label, PageHeader, Select, Spinner } from '../../components/dashboard/ui'
-import { ModalPanel } from '../../components/Modal'
-
-const TYPES = [
-  { value: 'store', label: 'Tienda / retail' },
-  { value: 'restaurant', label: 'Restaurante' },
-  { value: 'services', label: 'Servicios' },
-  { value: 'other', label: 'Otro' },
-]
 
 export default function StoresPage() {
   useRequireStores()
-  const { stores, refresh } = useDashboardWorkspace()
-  const { ensureVerified } = useVerificationGate()
-  const [modal, setModal] = useState(false)
-  const [name, setName] = useState('')
-  const [type, setType] = useState('store')
+  const { primaryBusiness } = useDashboardWorkspace()
+  const [registers, setRegisters] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState('')
+  const [locationName, setLocationName] = useState('')
+  const [registerName, setRegisterName] = useState('Caja principal')
+  const [creating, setCreating] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
 
-  async function handleCreate(e) {
+  useEffect(() => {
+    if (!primaryBusiness?.id) return
+    let cancelled = false
+    setLoading(true)
+    setLoadError('')
+    ;(async () => {
+      const { data, error } = await supabase
+        .from('registers')
+        .select('id, name, location, created_at')
+        .eq('business_id', primaryBusiness.id)
+        .order('created_at', { ascending: true })
+      if (cancelled) return
+      if (error) {
+        setLoadError('No se pudieron cargar las sucursales.')
+        setRegisters([])
+      } else {
+        setRegisters(data ?? [])
+      }
+      setLoading(false)
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [primaryBusiness?.id, creating])
+
+  const branches = useMemo(() => {
+    const map = new Map()
+    for (const reg of registers) {
+      const key = (reg.location || reg.name || 'Sin ubicación').trim()
+      const current = map.get(key) ?? { label: key, count: 0 }
+      current.count += 1
+      map.set(key, current)
+    }
+    return [...map.values()]
+  }, [registers])
+
+  async function handleAddLocation(e) {
     e.preventDefault()
     setError('')
-    if (!name.trim()) return
+    if (!locationName.trim()) return
     setSubmitting(true)
     try {
-      const ok = await ensureVerified()
-      if (!ok) return
-      const { error: rpcErr } = await createBusinessAndMembership(name.trim(), type)
-      if (rpcErr) throw rpcErr
-      setModal(false)
-      setName('')
-      setType('store')
-      await refresh()
+      setCreating(true)
+      const { error } = await supabase.from('registers').insert({
+        business_id: primaryBusiness.id,
+        name: registerName.trim() || 'Caja principal',
+        location: locationName.trim(),
+      })
+      if (error) throw error
+      setLocationName('')
+      setRegisterName('Caja principal')
     } catch (err) {
-      if (import.meta.env.DEV) console.error(err)
-      setError(getOnboardingErrorMessage(err))
+      setError('No se pudo crear la sucursal.')
     } finally {
       setSubmitting(false)
+      setCreating(false)
     }
   }
 
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
       <PageHeader
-        title="Tiendas"
-        subtitle={
-          stores.length > 0
-            ? 'Tu cuenta incluye una sola tienda. Puedes abrir su POS en varios dispositivos con la misma sesión.'
-            : 'Crea tu primera tienda. Luego podrás abrir el POS en cualquier dispositivo.'
-        }
-        action={
-          stores.length === 0 ? (
-            <Button onClick={() => setModal(true)}>
-              <Plus className="h-4 w-4" />
-              Crear tienda
-            </Button>
-          ) : null
-        }
+        title="Locations / Sucursales"
+        subtitle="Las sucursales pertenecen al negocio activo. Los negocios se crean desde el selector superior."
       />
 
-      {stores.length === 0 ? (
-        <Card>
-          <p className="text-[#94a3b8]">
-            No hay tiendas todavía. Tu suscripción incluye una sola tienda por cuenta.
-          </p>
-          <Button className="mt-4" onClick={() => setModal(true)}>
-            Crear la primera
-          </Button>
-        </Card>
-      ) : (
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-          {stores.map((s) => (
-            <Card key={s.id}>
-              <h3 className="text-lg font-semibold text-white">{s.name}</h3>
-              <p className="mt-1 text-sm capitalize text-[#64748b]">{s.type}</p>
-              <p className="mt-2 font-mono text-xs text-[#475569]">{s.id}</p>
-              <div className="mt-4 flex flex-wrap gap-2">
-                <a
-                  href={getPosUrl(s.id)}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl bg-[#22c55e] px-4 py-2.5 text-sm font-semibold text-[#052e16] hover:bg-[#4ade80] min-[360px]:flex-none"
-                >
-                  Abrir POS
-                  <ExternalLink className="h-4 w-4" />
-                </a>
-              </div>
-            </Card>
-          ))}
-        </div>
-      )}
-
-      {modal ? (
-        <div
-          className="fixed inset-0 z-[120] flex items-center justify-center bg-black/75 p-4 backdrop-blur-sm"
-          role="presentation"
-          onClick={() => !submitting && setModal(false)}
-        >
-          <div onClick={(e) => e.stopPropagation()}>
-            <ModalPanel>
-              <h2 className="text-lg font-semibold text-white">Nueva tienda</h2>
-              <p className="mt-1 text-sm text-[#94a3b8]">Se creará un negocio y tu usuario quedará como propietario.</p>
-              <form onSubmit={handleCreate} className="mt-6 space-y-4">
-                <div>
-                  <Label>Nombre</Label>
-                  <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Ej. Sucursal Centro" required />
-                </div>
-                <div>
-                  <Label>Tipo</Label>
-                  <Select value={type} onChange={(e) => setType(e.target.value)}>
-                    {TYPES.map((t) => (
-                      <option key={t.value} value={t.value}>
-                        {t.label}
-                      </option>
-                    ))}
-                  </Select>
-                </div>
-                {error ? <p className="text-sm text-red-300">{error}</p> : null}
-                <div className="flex gap-2 pt-2">
-                  <Button type="submit" disabled={submitting} className="flex-1">
-                    {submitting ? <Spinner className="!h-5 !w-5" /> : 'Crear'}
-                  </Button>
-                  <Button type="button" variant="secondary" disabled={submitting} onClick={() => setModal(false)}>
-                    Cancelar
-                  </Button>
-                </div>
-              </form>
-            </ModalPanel>
+      <Card>
+        <h3 className="text-sm font-semibold text-white">Agregar sucursal</h3>
+        <form onSubmit={handleAddLocation} className="mt-4 grid gap-3 md:grid-cols-[1fr_1fr_auto]">
+          <div>
+            <Label>Nombre de sucursal</Label>
+            <Input value={locationName} onChange={(e) => setLocationName(e.target.value)} placeholder="Ej. Centro" required />
           </div>
-        </div>
-      ) : null}
+          <div>
+            <Label>Nombre de registro</Label>
+            <Input value={registerName} onChange={(e) => setRegisterName(e.target.value)} placeholder="Caja principal" />
+          </div>
+          <div className="md:self-end">
+            <Button type="submit" disabled={submitting}>
+              {submitting ? <Spinner className="!h-5 !w-5" /> : 'Agregar sucursal'}
+            </Button>
+          </div>
+        </form>
+        {error ? <p className="mt-3 text-sm text-red-300">{error}</p> : null}
+      </Card>
+
+      <div className="mt-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+        {loading ? (
+          <Card>
+            <p className="text-sm text-[#94a3b8]">Cargando sucursales...</p>
+          </Card>
+        ) : null}
+        {!loading && loadError ? (
+          <Card>
+            <p className="text-sm text-red-300">{loadError}</p>
+          </Card>
+        ) : null}
+        {!loading && !loadError && branches.length === 0 ? (
+          <Card>
+            <p className="text-sm text-[#94a3b8]">Aún no hay sucursales para este negocio.</p>
+          </Card>
+        ) : null}
+        {branches.map((branch) => (
+          <Card key={branch.label}>
+            <div className="flex items-center gap-2">
+              <MapPin className="h-4 w-4 text-[#94a3b8]" />
+              <h3 className="text-lg font-semibold text-white">{branch.label}</h3>
+            </div>
+            <p className="mt-2 text-sm text-[#94a3b8]">{branch.count} registro(s)</p>
+          </Card>
+        ))}
+      </div>
     </motion.div>
   )
 }

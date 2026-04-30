@@ -48,3 +48,22 @@ supabase functions deploy sync-stripe-subscription --no-verify-jwt
 ### Si ves 404 + CORS en checkout
 
 La función **no está** desplegada en el proyecto remoto.
+
+## `send-business-invite`
+
+Guarda la invitación en `public.business_invites` y envía correo vía Resend.
+
+Secrets:
+
+- `RESEND_API_KEY`
+- `INVITE_FROM_EMAIL` (ej. `equipo@tudominio.com`)
+- `APP_BASE_URL` (ej. `https://app.moneymachine.com.mx`)
+
+Deploy:
+
+```bash
+supabase secrets set RESEND_API_KEY=re_xxx
+supabase secrets set INVITE_FROM_EMAIL=equipo@tudominio.com
+supabase secrets set APP_BASE_URL=https://app.moneymachine.com.mx
+supabase functions deploy send-business-invite --no-verify-jwt
+```

@@ -22,6 +22,8 @@ const SettingsPage = lazy(() => import('./pages/dashboard/SettingsPage'))
 const ForgotPasswordPage = lazy(() => import('./pages/ForgotPasswordPage'))
 const ResetPasswordPage = lazy(() => import('./pages/ResetPasswordPage'))
 const PricingPage = lazy(() => import('./pages/PricingPage'))
+const PrivacyPage = lazy(() => import('./pages/PrivacyPage'))
+const TermsPage = lazy(() => import('./pages/TermsPage'))
 
 function RouteFallback() {
   return (
@@ -48,6 +50,8 @@ export default function App() {
               <Route path="/signup" element={<Navigate to="/register" replace />} />
               <Route path="/auth/callback" element={<AuthCallbackPage />} />
               <Route path="/pricing" element={<PricingPage />} />
+              <Route path="/privacy" element={<PrivacyPage />} />
+              <Route path="/terms" element={<TermsPage />} />
               <Route
                 path="/onboarding"
                 element={

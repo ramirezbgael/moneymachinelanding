@@ -1,29 +1,33 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { motion } from 'framer-motion'
 import { Check } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { useDashboardWorkspace } from '../../context/DashboardWorkspaceContext'
-import {
-  startStripeCheckout,
-  getStripePriceId,
-  openStripeBillingPortal,
-  syncStripeSubscriptionFromServer,
-} from '../../lib/stripeCheckout'
+import { startStripeCheckout, openStripeBillingPortal, syncStripeSubscriptionFromServer } from '../../lib/stripeCheckout'
 import { CurrentPlanCard } from '../../components/dashboard/CurrentPlanCard'
 import { useVerificationGate } from '../../context/VerificationGateContext'
-import { useLocale } from '../../i18n'
 import { Button, Card, PageHeader } from '../../components/dashboard/ui'
 import { ModalBackdrop, ModalPanel } from '../../components/Modal'
+import { getPlansByBusinessType, getPrimaryUpgradePlan, resolveCurrentPlan } from '../../lib/pricingPlans'
 
 export default function SubscriptionPage() {
-  const { t } = useLocale()
-  const { profile, planLabel, isPro, refresh, showPaywall, activeSubscription, latestSubscription } =
+  const { profile, isPro, refresh, showPaywall, activeSubscription, latestSubscription, primaryBusiness } =
     useDashboardWorkspace()
   const { ensureVerified } = useVerificationGate()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [billing, setBilling] = useState(/** @type {'month' | 'year'} */ ('month'))
-  const [tier, setTier] = useState(/** @type {'pro' | 'business'} */ ('pro'))
+  const plans = useMemo(() => getPlansByBusinessType(primaryBusiness?.type), [primaryBusiness?.type])
+  const suggestedPlan = useMemo(() => getPrimaryUpgradePlan(primaryBusiness?.type), [primaryBusiness?.type])
+  const currentPlan = useMemo(
+    () => resolveCurrentPlan(primaryBusiness?.type, latestSubscription?.stripe_price_id || ''),
+    [primaryBusiness?.type, latestSubscription?.stripe_price_id],
+  )
+  const [selectedPlanKey, setSelectedPlanKey] = useState(suggestedPlan?.key ?? plans[0]?.key ?? '')
+  const selectedPlan = useMemo(
+    () => plans.find((p) => p.key === selectedPlanKey) ?? suggestedPlan ?? plans[0],
+    [plans, selectedPlanKey, suggestedPlan],
+  )
   const [portalError, setPortalError] = useState('')
   const [syncBusy, setSyncBusy] = useState(false)
   const [syncHint, setSyncHint] = useState('')
@@ -35,23 +39,25 @@ export default function SubscriptionPage() {
   const [cancelConfirm, setCancelConfirm] = useState(false)
   const [cancelReason, setCancelReason] = useState('')
 
-  const proPlan = useMemo(() => t.plans.find((p) => p.tier === 'pro'), [t.plans])
-  const businessPlan = useMemo(() => t.plans.find((p) => p.tier === 'business'), [t.plans])
+  useEffect(() => {
+    setSelectedPlanKey(suggestedPlan?.key ?? plans[0]?.key ?? '')
+  }, [suggestedPlan?.key, plans])
 
-  const selectedPriceLabel = useMemo(() => {
-    const p = tier === 'business' ? businessPlan : proPlan
-    if (!p) return ''
-    return billing === 'year' ? p.priceYearly : p.priceMonthly
-  }, [tier, billing, proPlan, businessPlan])
+  useEffect(() => {
+    if (billing === 'year' && !selectedPlan?.stripePriceIdYearly) {
+      setBilling('month')
+    }
+  }, [billing, selectedPlan?.stripePriceIdYearly])
 
   async function handleCheckout() {
     setError('')
     const ok = await ensureVerified()
     if (!ok) return
-    const priceId = getStripePriceId(tier, billing === 'year' ? 'year' : 'month')
+    const priceId =
+      billing === 'year' ? selectedPlan?.stripePriceIdYearly || '' : selectedPlan?.stripePriceIdMonthly || ''
     if (!priceId?.startsWith('price_')) {
       setError(
-        `Falta el Price ID de Stripe para ${tier === 'business' ? 'Business' : 'Pro'} (${billing === 'year' ? 'anual' : 'mensual'}) en .env (VITE_STRIPE_PRICE_*).`,
+        `Falta el Price ID de Stripe para ${selectedPlan?.name ?? 'este plan'} (${billing === 'year' ? 'anual' : 'mensual'}) en .env (VITE_STRIPE_PRICE_*).`,
       )
       return
     }
@@ -61,7 +67,7 @@ export default function SubscriptionPage() {
         priceId,
         mode: 'subscription',
         cancelUrl: `${window.location.origin}/subscription`,
-        planTier: tier,
+        planTier: selectedPlan?.checkoutTier ?? 'pro',
       })
       if (!res.ok) setError(res.message || 'No se pudo iniciar el pago.')
     } catch (e) {
@@ -77,8 +83,7 @@ export default function SubscriptionPage() {
   }
 
   function handleUpgradeFromCard() {
-    setTier('pro')
-    setBilling('month')
+    setSelectedPlanKey(suggestedPlan?.key ?? plans[0]?.key ?? '')
     scrollToCheckout()
   }
 
@@ -128,7 +133,7 @@ export default function SubscriptionPage() {
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
       <PageHeader
         title="Suscripción"
-        subtitle="Elige plan (Pro o Business) y si pagas mensual o anual; después te llevamos a Stripe Checkout."
+        subtitle="Planes dinámicos por tipo de negocio, sincronizados con Stripe."
       />
 
       {showPaywall ? (
@@ -209,7 +214,7 @@ export default function SubscriptionPage() {
             <>
               <h3 className="text-lg font-semibold text-white">Tu suscripción</h3>
               <div className="mt-4 space-y-2 text-sm text-[#86efac]">
-                <p className="font-medium">Plan activo: {planLabel}</p>
+                <p className="font-medium">Plan activo: {currentPlan.name}</p>
                 {activeSubscription ? (
                   <p className="text-xs text-[#94a3b8]">
                     Stripe: <span className="font-mono text-[#cbd5e1]">{activeSubscription.status}</span>
@@ -222,7 +227,7 @@ export default function SubscriptionPage() {
             </>
           ) : (
             <>
-              <p className="text-xs font-medium uppercase tracking-wider text-[#64748b]">Facturación</p>
+              <p className="text-xs font-medium uppercase tracking-wider text-[#64748b]">Periodo</p>
               <div
                 className="mt-3 inline-flex rounded-full border border-[#2d404d] bg-[#0a1219] p-1"
                 role="group"
@@ -237,41 +242,46 @@ export default function SubscriptionPage() {
                       : 'text-[#8a9ba8] hover:text-white'
                   }`}
                 >
-                  {t.billingToggleMonthly}
+                  Mensual
                 </button>
                 <button
                   type="button"
                   onClick={() => setBilling('year')}
+                  disabled={!plans.some((p) => Boolean(p.stripePriceIdYearly))}
                   className={`rounded-full px-4 py-2 text-sm font-medium transition-colors ${
                     billing === 'year'
                       ? 'bg-[#1a3d32] text-[#b8ffe8] shadow-[0_0_20px_rgba(34,197,94,0.12)]'
                       : 'text-[#8a9ba8] hover:text-white'
-                  }`}
+                  } disabled:opacity-50`}
                 >
-                  {t.billingToggleYearly}
+                  Anual
                 </button>
               </div>
 
               <p className="mt-6 text-xs font-medium uppercase tracking-wider text-[#64748b]">Elige plan</p>
               <div className="mt-3 grid gap-3 sm:grid-cols-2">
-                {[proPlan, businessPlan].filter(Boolean).map((p) => {
-                  const selected = (p.tier === 'business' && tier === 'business') || (p.tier === 'pro' && tier === 'pro')
-                  const price = billing === 'year' ? p.priceYearly : p.priceMonthly
+                {plans.map((p) => {
+                  const selected = p.key === selectedPlanKey
                   return (
                     <button
-                      key={p.tier}
+                      key={p.key}
                       type="button"
-                      onClick={() => setTier(p.tier === 'business' ? 'business' : 'pro')}
+                      onClick={() => setSelectedPlanKey(p.key)}
+                      disabled={Boolean(p.comingSoon)}
                       className={`rounded-2xl border p-4 text-left transition-colors ${
                         selected
                           ? 'border-[#22c55e] bg-[#22c55e]/10 shadow-[0_0_24px_rgba(34,197,94,0.12)]'
                           : 'border-white/10 bg-black/20 hover:border-white/20'
-                      }`}
+                      } ${p.comingSoon ? 'opacity-60' : ''}`}
                     >
-                      <p className="text-sm font-semibold tracking-wide text-white">{p.name}</p>
-                      <p className="mt-2 text-lg font-semibold text-[#86efac]">{price}</p>
+                      <p className="text-sm font-semibold tracking-wide text-white">
+                        {p.name} {p.badge ? <span className="text-xs text-amber-300">· {p.badge}</span> : null}
+                      </p>
+                      <p className="mt-2 text-lg font-semibold text-[#86efac]">
+                        {billing === 'year' ? p.priceYearlyLabel || p.priceMonthlyLabel : p.priceMonthlyLabel || p.priceLabel}
+                      </p>
                       <p className="mt-1 text-xs text-[#64748b]">
-                        {billing === 'year' ? t.billingToggleYearly : t.billingToggleMonthly}
+                        {p.comingSoon ? 'Próximamente' : billing === 'year' ? (p.priceYearlyLabel ? 'Anual' : 'Sin anual') : 'Mensual'}
                       </p>
                     </button>
                   )
@@ -281,12 +291,13 @@ export default function SubscriptionPage() {
               <div className="mt-4 rounded-xl border border-white/5 bg-black/20 p-4">
                 <p className="text-sm text-[#94a3b8]">Resumen</p>
                 <p className="mt-1 text-white">
-                  <span className="font-semibold text-[#22c55e]">{tier === 'business' ? 'Business' : 'Pro'}</span>
-                  {' · '}
-                  {selectedPriceLabel}
+                  <span className="font-semibold text-[#22c55e]">{selectedPlan?.name ?? '—'}</span> ·{' '}
+                  {billing === 'year'
+                    ? selectedPlan?.priceYearlyLabel || selectedPlan?.priceMonthlyLabel || selectedPlan?.priceLabel
+                    : selectedPlan?.priceMonthlyLabel || selectedPlan?.priceLabel}
                 </p>
                 <ul className="mt-3 space-y-1.5 text-sm text-[#cbd5e1]">
-                  {(tier === 'business' ? businessPlan?.bullets : proPlan?.bullets)?.slice(0, 4).map((b) => (
+                  {(selectedPlan?.features ?? []).slice(0, 4).map((b) => (
                     <li key={b} className="flex items-center gap-2">
                       <Check className="h-3.5 w-3.5 shrink-0 text-[#22c55e]" />
                       {b}
@@ -296,7 +307,7 @@ export default function SubscriptionPage() {
               </div>
 
               <div className="mt-6 flex flex-col gap-2">
-                <Button disabled={loading} onClick={handleCheckout}>
+                <Button disabled={loading || Boolean(selectedPlan?.comingSoon)} onClick={handleCheckout}>
                   {loading ? 'Abriendo Stripe…' : 'Continuar al pago con Stripe'}
                 </Button>
                 {error ? <p className="text-sm text-red-300">{error}</p> : null}

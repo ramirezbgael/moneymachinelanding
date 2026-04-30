@@ -114,8 +114,7 @@ export default function UsersPage() {
         <Card>
           <h3 className="text-sm font-semibold text-white">Añadir usuario</h3>
           <p className="mt-1 text-xs text-[#64748b]">
-            Guardamos la invitación por email. El usuario deberá registrarse con ese correo para unirse (flujo
-            completo próximamente).
+            Enviamos una invitación por correo. El usuario debe registrarse o iniciar sesión con ese email para unirse.
           </p>
           <form onSubmit={handleInvite} className="mt-4 space-y-3">
             <div>

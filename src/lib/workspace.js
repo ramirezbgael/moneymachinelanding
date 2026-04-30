@@ -186,12 +186,48 @@ export async function fetchTeamForBusiness(businessId) {
 
 /** @param {{ businessId: string, email: string, role: string, invitedBy: string }} p */
 export async function createBusinessInvite({ businessId, email, role, invitedBy }) {
-  return supabase.from('business_invites').insert({
-    business_id: businessId,
-    email: email.trim().toLowerCase(),
-    role,
-    invited_by: invitedBy,
-  })
+  const baseUrl = import.meta.env.VITE_SUPABASE_URL
+  const anon = import.meta.env.VITE_SUPABASE_ANON_KEY
+  if (!baseUrl || !anon) {
+    return { error: { message: 'Faltan VITE_SUPABASE_URL o VITE_SUPABASE_ANON_KEY.' } }
+  }
+
+  const {
+    data: { session },
+  } = await supabase.auth.getSession()
+  if (!session?.access_token) {
+    return { error: { message: 'Sesión inválida. Inicia sesión de nuevo.' } }
+  }
+
+  const url = `${baseUrl.replace(/\/$/, '')}/functions/v1/send-business-invite`
+  try {
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${session.access_token}`,
+        apikey: anon,
+      },
+      body: JSON.stringify({
+        businessId,
+        email: email.trim().toLowerCase(),
+        role,
+        invitedBy,
+      }),
+    })
+    const data = await res.json().catch(() => ({}))
+    if (!res.ok) {
+      return {
+        error: {
+          message: data.message || data.error || `Error ${res.status} al enviar invitación`,
+        },
+      }
+    }
+    return { error: null }
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e)
+    return { error: { message: `No se pudo enviar la invitación: ${msg}` } }
+  }
 }
 
 /** @param {string} inviteId */
@@ -199,11 +235,43 @@ export async function deleteBusinessInvite(inviteId) {
   return supabase.from('business_invites').delete().eq('id', inviteId)
 }
 
-const POS_BASE = 'https://moneymachinepos.netlify.app'
+const POS_BY_TYPE = {
+  retail: 'https://retail.moneymachine.com.mx',
+  restaurant: 'https://food.moneymachine.com.mx',
+  gym: 'https://gym.moneymachine.com.mx',
+}
 
-/** @param {string} storeId */
-export function getPosUrl(storeId) {
-  return `${POS_BASE}/${storeId}`
+/** @param {string | null | undefined} rawType */
+export function normalizeBusinessType(rawType) {
+  const value = String(rawType ?? '').trim().toLowerCase()
+  if (value === 'restaurant') return 'restaurant'
+  if (value === 'gym') return 'gym'
+  if (value === 'store' || value === 'retail' || value === 'services' || value === 'other') return 'retail'
+  return 'retail'
+}
+
+/** @param {string | null | undefined} rawType */
+export function getBusinessTypeLabel(rawType) {
+  const type = normalizeBusinessType(rawType)
+  if (type === 'restaurant') return 'Restaurante'
+  if (type === 'gym') return 'Gimnasio'
+  return 'Commerce'
+}
+
+/** @param {string | null | undefined} rawType */
+export function getPosBaseUrlByBusinessType(rawType) {
+  const type = normalizeBusinessType(rawType)
+  return POS_BY_TYPE[type] ?? POS_BY_TYPE.retail
+}
+
+/**
+ * URL de POS centralizada por tipo de negocio.
+ * @param {{ id?: string | null, type?: string | null } | null | undefined} business
+ */
+export function getPosUrlForBusiness(business) {
+  const base = getPosBaseUrlByBusinessType(business?.type)
+  if (!business?.id) return base
+  return `${base}?business_id=${encodeURIComponent(business.id)}`
 }
 
 const DEFAULT_MODULES = { inventory: false, reports: false, multi_store: false }

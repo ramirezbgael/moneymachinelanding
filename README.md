@@ -23,6 +23,7 @@ npm run dev
 9. Si el dashboard devuelve **500** al cargar `profiles` / `businesses`, suele ser **recursión en RLS**: ejecuta **`supabase/migration_008_rls_no_recursion.sql`** (funciones `mm_*` + políticas corregidas).
 10. **Authentication → Providers**: Email activado.
 11. En dev puedes desactivar **Confirm email** para tener sesión al instante tras el registro (los usuarios suelen tener `email_confirmed_at` rellenado y no verán el banner de verificación).
+12. Para envío real de invitaciones por correo desde **Usuarios**, despliega `send-business-invite` y configura secrets (`RESEND_API_KEY`, `INVITE_FROM_EMAIL`, `APP_BASE_URL`) según `supabase/functions/README.md`.
 
 ### Auth: callback y verificación de email
 

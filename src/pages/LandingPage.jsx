@@ -19,10 +19,11 @@ import { LiveDashboardPreview } from '../components/landing/LiveDashboardPreview
 import { useLocale } from '../i18n'
 import { HeroMorphVisual } from '../components/landing/HeroMorphVisual'
 import { MORPH_ICONS } from '../components/landing/icons'
+import { getPlansByBusinessType } from '../lib/pricingPlans'
 
 export default function LandingPage() {
   const { lang, t } = useLocale()
-  const [category, setCategory] = useState('restaurantes')
+  const [category, setCategory] = useState('restaurant')
   const [sendingOrder, setSendingOrder] = useState(true)
   const [stockShift, setStockShift] = useState(0)
   const [qrValidated, setQrValidated] = useState(false)
@@ -34,7 +35,8 @@ export default function LandingPage() {
       })),
     [t],
   )
-  const categoryTitle = category === 'restaurantes' ? 'restaurantes' : category === 'retail' ? 'retail' : 'gym'
+  const categoryTitle = category === 'restaurant' ? 'tu restaurante' : category === 'retail' ? 'tu tienda' : 'tu gym'
+  const categoryPlans = useMemo(() => getPlansByBusinessType(category), [category])
 
   useEffect(() => {
     const orderTimer = setInterval(() => {
@@ -139,10 +141,10 @@ export default function LandingPage() {
                 badge: 'Mas control',
               },
               {
-                title: 'Retail',
+                title: 'Commerce',
                 subtitle: 'Controla ventas e inventario sin complicarte',
                 bullets: ['TPV rapido', 'Inventario en tiempo real', 'Clientes'],
-                cta: 'Ver planes para retail',
+                cta: 'Ver planes para Commerce',
                 Icon: ShoppingBag,
                 badge: 'Mas eficiencia',
               },
@@ -252,7 +254,7 @@ export default function LandingPage() {
 
           <div className="grid gap-4 rounded-3xl border border-white/[0.08] bg-[#101010]/92 p-6 backdrop-blur-xl lg:grid-cols-2 lg:items-center">
             <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#79f2c5]">Control retail</p>
+              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#79f2c5]">Control Commerce</p>
               <h3 className="mt-2 text-3xl font-semibold leading-tight text-white sm:text-4xl">
                 Venta confirmada. Inventario actualizado.
               </h3>
@@ -327,15 +329,15 @@ export default function LandingPage() {
               Planes disenados para tu negocio
             </p>
             <h2 className="mt-2 text-3xl font-semibold text-white sm:text-5xl">
-              Elige el plan ideal
+              Elige lo ideal
               <span className="block text-[#46f7b4]">para {categoryTitle}</span>
             </h2>
           </div>
 
           <div className="mx-auto mt-7 flex w-fit flex-wrap rounded-2xl border border-white/10 bg-[#101010]/92 p-1.5">
             {[
-              { id: 'restaurantes', label: 'Restaurantes' },
-              { id: 'retail', label: 'Retail' },
+              { id: 'restaurant', label: 'Restaurantes' },
+              { id: 'retail', label: 'Commerce' },
               { id: 'gym', label: 'Gym' },
             ].map((tab) => (
               <button
@@ -354,65 +356,17 @@ export default function LandingPage() {
           </div>
 
           <div className="mt-8 grid gap-5 md:grid-cols-2 lg:grid-cols-3">
-            {category === 'restaurantes' ? (
-              <>
-                <PricingCard
-                  name="Starter"
-                  price="$590 MXN / mes"
-                  subtitle="Ideal para puestos o negocios pequenos"
-                  bullets={['1 dispositivo', 'TPV basico', 'Ideal para puestos o negocios pequenos']}
-                />
-                <PricingCard
-                  name="Pro"
-                  price="$1400 MXN / mes"
-                  highlight
-                  badge="Mas popular"
-                  subtitle="Para restaurantes con meseros"
-                  bullets={[
-                    'Comandas con meseros desde celular',
-                    'Multi dispositivo',
-                    'Control total de operaciones',
-                  ]}
-                />
-                <PricingCard
-                  name="Premium"
-                  price="$1990 MXN / mes"
-                  subtitle="Experiencia avanzada para tu restaurante"
-                  bullets={[
-                    'Todo lo anterior',
-                    'Autofacturacion por comensal (QR en mesa)',
-                    'Menos carga operativa',
-                  ]}
-                />
-              </>
-            ) : null}
-
-            {category === 'retail' ? (
-              <>
-                <PricingCard
-                  name="Basico"
-                  price="$149 MXN / mes"
-                  subtitle="Ideal para iniciar y vender mas"
-                  bullets={['TPV', 'Inventario', 'Clientes']}
-                />
-                <PricingCard
-                  name="Pro"
-                  price="$299 MXN / mes"
-                  badge="Proximamente"
-                  subtitle="Escala tu operacion retail"
-                  bullets={['Todo lo anterior', 'Facturacion electronica (Proximamente)']}
-                />
-              </>
-            ) : null}
-
-            {category === 'gym' ? (
+            {categoryPlans.map((plan) => (
               <PricingCard
-                name="Gym"
-                price="$459 MXN / mes"
-                subtitle="Todo tu gimnasio en un solo panel"
-                bullets={['Suscripciones', 'Acceso con QR', 'Control de asistencia']}
+                key={plan.key}
+                name={plan.name}
+                price={plan.priceLabel}
+                subtitle=""
+                bullets={plan.features}
+                highlight={plan.key === 'pro'}
+                badge={plan.badge ?? ''}
               />
-            ) : null}
+            ))}
           </div>
 
           <div className="mt-8 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -489,7 +443,7 @@ export default function LandingPage() {
                 <div className="mt-3 space-y-2 text-sm text-[#a7b4be]">
                   <a href="#pricing" className="block hover:text-white">Restaurantes</a>
                   <a href="#pricing" className="block hover:text-white">Gimnasios</a>
-                  <a href="#pricing" className="block hover:text-white">Retail</a>
+                  <a href="#pricing" className="block hover:text-white">Commerce</a>
                 </div>
               </div>
               <div>
@@ -502,8 +456,8 @@ export default function LandingPage() {
               <div>
                 <p className="text-sm font-semibold text-white">Legal</p>
                 <div className="mt-3 space-y-2 text-sm text-[#a7b4be]">
-                  <a href="/terminos" className="block hover:text-white">Terminos</a>
-                  <a href="/privacidad" className="block hover:text-white">Privacidad</a>
+                  <a href="/terms" className="block hover:text-white">Terminos</a>
+                  <a href="/privacy" className="block hover:text-white">Privacidad</a>
                 </div>
               </div>
             </div>

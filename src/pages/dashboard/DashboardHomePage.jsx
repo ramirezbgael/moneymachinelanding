@@ -1,115 +1,279 @@
 import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { ExternalLink, Pencil, Sparkles } from 'lucide-react'
-import { useState } from 'react'
+import { ExternalLink, Package, UserPlus, WalletCards } from 'lucide-react'
+import { useEffect, useMemo, useState } from 'react'
 import { useDashboardWorkspace } from '../../context/DashboardWorkspaceContext'
-import { Card, PageHeader, Button, Input } from '../../components/dashboard/ui'
+import { Card, PageHeader, Button } from '../../components/dashboard/ui'
 import { supabase } from '../../lib/supabase'
+import { getBusinessTypeLabel, getPosUrlForBusiness, normalizeBusinessType } from '../../lib/workspace'
+import { getPlansByBusinessType, getPrimaryUpgradePlan, resolveCurrentPlan } from '../../lib/pricingPlans'
+
+function statusTone(status) {
+  const value = String(status ?? '').toLowerCase()
+  if (value === 'active') return 'text-emerald-300'
+  if (value === 'trialing') return 'text-amber-300'
+  if (value === 'past_due' || value === 'canceled') return 'text-red-300'
+  return 'text-slate-300'
+}
+
+function subscriptionStatusLabel(status) {
+  const value = String(status ?? '').toLowerCase()
+  if (value === 'trialing') return 'Trial activo'
+  if (value === 'active') return 'Activo'
+  if (value === 'past_due') return 'Pago pendiente'
+  if (value === 'canceled') return 'Cancelado'
+  return 'Sin estado'
+}
 
 export default function DashboardHomePage() {
-  const { profile, stores, planLabel, isPro, refresh } = useDashboardWorkspace()
-  const store = stores[0] ?? null
-  const [editingName, setEditingName] = useState(false)
-  const [name, setName] = useState(store?.name ?? '')
-  const [savingName, setSavingName] = useState(false)
+  const { primaryBusiness } = useDashboardWorkspace()
+  const [loadingStats, setLoadingStats] = useState(false)
+  const [statsError, setStatsError] = useState('')
+  const [teamCount, setTeamCount] = useState(0)
+  const [locations, setLocations] = useState([])
+  const [subscription, setSubscription] = useState(null)
 
-  async function handleSaveName() {
-    if (!store?.id || !name.trim()) return
-    setSavingName(true)
-    try {
-      const { error } = await supabase
-        .from('businesses')
-        .update({ name: name.trim() })
-        .eq('id', store.id)
-      if (!error) {
-        setEditingName(false)
-        await refresh()
+  useEffect(() => {
+    if (!primaryBusiness?.id) return
+    let cancelled = false
+    setLoadingStats(true)
+    setStatsError('')
+
+    ;(async () => {
+      try {
+        const [registersRes, membersRes, subsRes] = await Promise.all([
+          supabase
+            .from('registers')
+            .select('id, name, location')
+            .eq('business_id', primaryBusiness.id)
+            .order('created_at', { ascending: true }),
+          supabase.from('business_members').select('id').eq('business_id', primaryBusiness.id),
+          supabase
+            .from('saas_subscriptions')
+            .select('id, status, stripe_price_id, current_period_end, updated_at')
+            .eq('business_id', primaryBusiness.id)
+            .order('updated_at', { ascending: false })
+            .limit(1)
+            .maybeSingle(),
+        ])
+
+        if (registersRes.error) throw registersRes.error
+        if (membersRes.error) throw membersRes.error
+        if (subsRes.error) throw subsRes.error
+        if (cancelled) return
+
+        setLocations(registersRes.data ?? [])
+        setTeamCount((membersRes.data ?? []).length)
+        setSubscription(subsRes.data ?? null)
+      } catch (error) {
+        if (cancelled) return
+        if (import.meta.env.DEV) console.error('[dashboard-home]', error)
+        setStatsError('No se pudo cargar el resumen de este negocio.')
+      } finally {
+        if (!cancelled) setLoadingStats(false)
       }
-    } finally {
-      setSavingName(false)
-    }
-  }
+    })()
 
-  const accountLabel =
-    profile?.email || profile?.name || 'Tu cuenta'
+    return () => {
+      cancelled = true
+    }
+  }, [primaryBusiness?.id])
+
+  const branches = useMemo(() => {
+    const map = new Map()
+    for (const reg of locations) {
+      const key = (reg.location || reg.name || 'Sin ubicación').trim()
+      const current = map.get(key) ?? { label: key, count: 0 }
+      current.count += 1
+      map.set(key, current)
+    }
+    return [...map.values()]
+  }, [locations])
+
+  const subscriptionStatus = String(subscription?.status ?? primaryBusiness?.billing_status ?? 'trialing').toLowerCase()
+  const planCatalog = getPlansByBusinessType(primaryBusiness?.type)
+  const currentPlan = resolveCurrentPlan(primaryBusiness?.type, subscription?.stripe_price_id)
+  const suggestedUpgrade = getPrimaryUpgradePlan(primaryBusiness?.type)
+  const billingDateLabel = subscription?.current_period_end
+    ? new Date(subscription.current_period_end).toLocaleDateString('es-MX', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+      })
+    : '—'
+  const planPrice = currentPlan?.priceLabel ?? '—'
+  const planUnlocks = currentPlan?.features?.join(', ') ?? '—'
+  const isTrial = subscriptionStatus === 'trialing'
+  const daysRemaining = subscription?.current_period_end
+    ? Math.max(0, Math.ceil((new Date(subscription.current_period_end).getTime() - Date.now()) / 86400000))
+    : null
+  const subscriptionCtaLabel =
+    subscriptionStatus === 'active' && currentPlan?.key === suggestedUpgrade?.key
+      ? 'Administrar suscripción'
+      : 'Actualizar plan'
+  const operationInsight =
+    normalizeBusinessType(primaryBusiness?.type) === 'restaurant'
+      ? 'Operación conectada: salón, meseros y cocina en tiempo real.'
+      : normalizeBusinessType(primaryBusiness?.type) === 'gym'
+        ? 'Operación conectada: membresías, accesos y control diario.'
+        : 'Operación conectada: ventas, inventario y control en tiempo real.'
 
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
       <PageHeader
-        title="Tu panel de MoneyMachine"
-        subtitle="Administra tu cuenta, suscripción y abre tu punto de venta desde un solo lugar."
+        title="Workspace de negocio"
+        subtitle="Controla tu negocio como una máquina: operación en tiempo real, sin errores y todo conectado."
       />
 
-      <div className="grid gap-4 lg:grid-cols-3">
-        {/* Cuenta / negocio */}
-        <Card className="lg:col-span-1">
-          <p className="text-xs font-medium uppercase tracking-wider text-[#64748b]">Cuenta</p>
-          <p className="mt-2 text-sm text-[#94a3b8]">{accountLabel}</p>
-          <div className="mt-4 space-y-3">
-            <p className="text-xs font-medium uppercase tracking-wider text-[#64748b]">
-              Nombre del negocio
-            </p>
-            <div className="flex flex-col gap-2 sm:flex-row">
-              <Input
-                value={editingName ? name : store?.name ?? ''}
-                onChange={(e) => setName(e.target.value)}
-                disabled={!editingName}
-                placeholder="Sin nombre aún"
-              />
-              <Button
-                variant="secondary"
-                className="shrink-0"
-                disabled={savingName}
-                onClick={() => (editingName ? handleSaveName() : setEditingName(true))}
-              >
-                <Pencil className="h-4 w-4" />
-                {editingName ? (savingName ? 'Guardando…' : 'Guardar') : 'Editar'}
-              </Button>
+      {statsError ? (
+        <div className="mb-4 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-200">
+          {statsError}
+        </div>
+      ) : null}
+
+      <div className="grid gap-4 xl:grid-cols-12">
+        <Card className="xl:col-span-4">
+          <p className="text-xs font-medium uppercase tracking-wider text-[#64748b]">Business Overview</p>
+          <h2 className="mt-3 text-xl font-semibold text-white">{primaryBusiness?.name ?? 'Sin negocio activo'}</h2>
+          <p className="mt-1 text-sm text-[#94a3b8]">{getBusinessTypeLabel(primaryBusiness?.type)}</p>
+          <p className="mt-3 rounded-xl border border-white/10 bg-black/20 px-3 py-2 text-xs text-[#9CA3AF]">
+            {operationInsight}
+          </p>
+          <div className="mt-6 grid grid-cols-2 gap-3">
+            <div className="rounded-xl border border-white/10 bg-black/20 p-3">
+              <p className="text-xs text-[#64748b]">Ubicaciones</p>
+              <p className="mt-1 text-lg font-semibold text-white">{branches.length}</p>
+            </div>
+            <div className="rounded-xl border border-white/10 bg-black/20 p-3">
+              <p className="text-xs text-[#64748b]">Dispositivos / equipo</p>
+              <p className="mt-1 text-lg font-semibold text-white">{teamCount}</p>
             </div>
           </div>
         </Card>
 
-        {/* Suscripción */}
-        <Card className="lg:col-span-1">
+        <Card className="xl:col-span-4">
           <p className="text-xs font-medium uppercase tracking-wider text-[#64748b]">Suscripción</p>
-          <p className="mt-2 text-2xl font-semibold text-white">{planLabel}</p>
-          <p className="mt-1 text-sm text-[#94a3b8]">
-            {isPro
-              ? 'Tu plan está activo. Puedes gestionar la facturación desde la sección de suscripción.'
-              : 'Mejora a Pro para desbloquear todo el potencial de MoneyMachine.'}
-          </p>
-          <div className="mt-4 flex flex-wrap gap-2">
+          <div className="mt-3 space-y-2 text-sm">
+            <div className="flex items-center justify-between gap-3">
+              <span className="text-[#94a3b8]">Plan</span>
+              <span className="font-medium text-white">{currentPlan?.name ?? '—'}</span>
+            </div>
+            <div className="flex items-center justify-between gap-3">
+              <span className="text-[#94a3b8]">Estado</span>
+              <span className={`font-medium uppercase ${statusTone(subscriptionStatus)}`}>
+                {subscriptionStatusLabel(subscriptionStatus)}
+              </span>
+            </div>
+            <div className="flex items-center justify-between gap-3">
+              <span className="text-[#94a3b8]">Precio</span>
+              <span className="font-medium text-white">{planPrice}</span>
+            </div>
+            <div className="flex items-center justify-between gap-3">
+              <span className="text-[#94a3b8]">Próximo cobro</span>
+              <span className="font-medium text-white">{billingDateLabel}</span>
+            </div>
+            {isTrial && daysRemaining != null ? (
+              <div className="flex items-center justify-between gap-3">
+                <span className="text-[#94a3b8]">Días de trial restantes</span>
+                <span className="font-medium text-amber-300">{daysRemaining}</span>
+              </div>
+            ) : null}
+          </div>
+          <p className="mt-3 text-xs text-[#9CA3AF]">{planUnlocks}</p>
+          <div className="mt-4 rounded-xl border border-white/10 bg-black/20 p-3">
+            <p className="text-xs font-medium uppercase tracking-wider text-[#64748b]">Opciones disponibles</p>
+            <div className="mt-2 space-y-2">
+              {planCatalog.map((plan) => (
+                <div
+                  key={plan.key}
+                  className={`rounded-lg border px-2.5 py-2 ${
+                    plan.key === currentPlan?.key ? 'border-[#22c55e]/40 bg-[#22c55e]/10' : 'border-white/10 bg-black/20'
+                  }`}
+                >
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="text-sm font-semibold text-white">{plan.name}</span>
+                    <span className="text-xs text-[#9CA3AF]">{plan.priceLabel}</span>
+                  </div>
+                  <p className="mt-1 text-xs text-[#9CA3AF]">{plan.features.join(', ')}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+          <div className="mt-5">
             <Link to="/subscription">
-              <Button>
-                {isPro ? 'Ver detalles de suscripción' : 'Mejorar a Pro'}
+              <Button variant={subscriptionCtaLabel === 'Actualizar plan' ? 'primary' : 'secondary'}>
+                {subscriptionCtaLabel}
               </Button>
+            </Link>
+          </div>
+          <p className="mt-2 text-xs text-[#9CA3AF]">7 días gratis, sin tarjeta para iniciar.</p>
+        </Card>
+
+        <Card className="xl:col-span-4">
+          <p className="text-xs font-medium uppercase tracking-wider text-[#64748b]">Quick Actions</p>
+          <div className="mt-4 grid gap-2 sm:grid-cols-2">
+            <a
+              href={getPosUrlForBusiness(primaryBusiness)}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#22c55e] px-3 py-2.5 text-sm font-semibold text-[#052e16] hover:bg-[#4ade80]"
+            >
+              <ExternalLink className="h-4 w-4" />
+              Open POS
+            </a>
+            <Link
+              to="/dashboard"
+              className="inline-flex items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3 py-2.5 text-sm font-semibold text-white hover:bg-white/10"
+            >
+              <WalletCards className="h-4 w-4" />
+              Ver reportes
+            </Link>
+            <Link
+              to="/modules"
+              className="inline-flex items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3 py-2.5 text-sm font-semibold text-white hover:bg-white/10"
+            >
+              <Package className="h-4 w-4" />
+              Inventario / operación
+            </Link>
+            <Link
+              to="/users"
+              className="inline-flex items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3 py-2.5 text-sm font-semibold text-white hover:bg-white/10"
+            >
+              <UserPlus className="h-4 w-4" />
+              Invitar equipo
             </Link>
           </div>
         </Card>
 
-        {/* POS */}
-        <Card className="lg:col-span-1">
-          <p className="text-xs font-medium uppercase tracking-wider text-[#64748b]">Punto de venta</p>
-          <div className="mt-3 flex items-center gap-2 text-[#86efac]">
-            <Sparkles className="h-5 w-5" />
-            <span className="text-sm font-medium">
-              {store ? 'Todo listo para vender' : 'Crea tu tienda para empezar a vender'}
-            </span>
+        <Card className="xl:col-span-12">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <p className="text-xs font-medium uppercase tracking-wider text-[#64748b]">Locations / Branches</p>
+              <p className="mt-1 text-sm text-[#94a3b8]">Basado en `registers.location` del negocio activo.</p>
+            </div>
+            <Link to="/stores">
+              <Button>Add location</Button>
+            </Link>
           </div>
-          <p className="mt-2 text-sm text-[#94a3b8]">
-            Usa la misma cuenta en varios dispositivos; tu tienda y su inventario son los mismos.
-          </p>
-          {store ? (
-            <a
-              href="https://moneymachinepos.netlify.app"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="mt-4 inline-flex items-center gap-2 rounded-xl bg-[#22c55e] px-4 py-2.5 text-sm font-semibold text-[#052e16] shadow-[0_0_24px_rgba(34,197,94,0.25)] hover:bg-[#4ade80]"
-            >
-              Abrir POS
-              <ExternalLink className="h-4 w-4" />
-            </a>
-          ) : null}
+          <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+            {branches.map((branch) => (
+              <div key={branch.label} className="rounded-xl border border-white/10 bg-black/20 p-4">
+                <p className="text-sm font-semibold text-white">{branch.label}</p>
+              <p className="mt-1 text-xs text-[#94a3b8]">{branch.count} registro(s) activo(s)</p>
+              <p className="mt-1 text-[11px] text-emerald-300">Operativa</p>
+              </div>
+            ))}
+            {!loadingStats && branches.length === 0 ? (
+              <div className="rounded-xl border border-white/10 bg-black/20 p-4 text-sm text-[#94a3b8]">
+                Aún no hay ubicaciones registradas.
+              </div>
+            ) : null}
+            {loadingStats ? (
+              <div className="rounded-xl border border-white/10 bg-black/20 p-4 text-sm text-[#94a3b8]">
+                Cargando ubicaciones...
+              </div>
+            ) : null}
+          </div>
         </Card>
       </div>
     </motion.div>

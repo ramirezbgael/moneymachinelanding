@@ -1,11 +1,13 @@
 import { useCallback, useEffect, useState } from 'react'
 import { motion } from 'framer-motion'
 import { ImagePlus, Trash2 } from 'lucide-react'
+import { Link } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import { useRequireStores, useDashboardWorkspace } from '../../context/DashboardWorkspaceContext'
 import { Button, Card, Input, Label, PageHeader, Spinner } from '../../components/dashboard/ui'
 import { useAuth } from '../../hooks/useAuth'
 import { getAuthEmail } from '../../lib/authUtils'
+import { getBusinessTypeLabel } from '../../lib/workspace'
 
 export default function SettingsPage() {
   useRequireStores()
@@ -163,6 +165,13 @@ export default function SettingsPage() {
               <Input value={name} onChange={(e) => setName(e.target.value)} />
             </div>
             <div>
+              <Label>Tipo de negocio</Label>
+              <Input value={getBusinessTypeLabel(biz?.type)} disabled />
+              <p className="mt-1 text-xs text-[#fbbf24]">
+                El tipo es fijo para mantener tus datos aislados por industria. Si necesitas otro tipo, crea un negocio nuevo.
+              </p>
+            </div>
+            <div>
               <Label>Color de tema</Label>
               <div className="mt-2 flex items-center gap-3">
                 <input
@@ -175,6 +184,24 @@ export default function SettingsPage() {
               </div>
             </div>
           </div>
+          <div className="mt-4">
+            <Link
+              to="/stores"
+              className="inline-flex items-center justify-center rounded-xl border border-white/15 px-3 py-2 text-xs font-semibold text-white hover:border-[#22c55e]/40"
+            >
+              Crear nuevo negocio
+            </Link>
+          </div>
+        </Card>
+
+        <Card>
+          <h3 className="text-sm font-semibold text-white">Convertir tipo (avanzado)</h3>
+          <p className="mt-2 text-xs text-amber-300">
+            Cambiar tipo puede afectar datos operativos. Por seguridad no está habilitado en self-service.
+          </p>
+          <p className="mt-1 text-xs text-[#94a3b8]">
+            Si necesitas migración entre industrias, contacta soporte para revisión y plan de migración.
+          </p>
         </Card>
 
         <Card>

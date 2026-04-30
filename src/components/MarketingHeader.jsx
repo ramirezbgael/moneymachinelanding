@@ -14,8 +14,9 @@ export function MarketingHeader() {
       <div className="mx-auto flex max-w-6xl items-center justify-between gap-2 px-4 py-3 sm:gap-4 sm:px-6">
         <Link
           to="/"
-          className="shrink-0 text-sm font-semibold tracking-wide text-[#00ff9f] sm:text-[15px]"
+          className="shrink-0 inline-flex items-center gap-2 text-sm font-semibold tracking-wide text-[#00ff9f] sm:text-[15px]"
         >
+          <img src="/icon.png" alt="MoneyMachine" className="h-7 w-7 rounded-md object-cover" />
           MoneyMachine
         </Link>
         <div className="flex min-w-0 flex-wrap items-center justify-end gap-2 sm:gap-3">

@@ -7,11 +7,9 @@ import { useAuth } from '../hooks/useAuth'
 import { useVerificationGate } from '../context/VerificationGateContext'
 
 const BUSINESS_TYPES = [
-  { value: 'store', label: 'Tienda / retail' },
+  { value: 'retail', label: 'Commerce' },
   { value: 'gym', label: 'Gimnasio' },
-  { value: 'restaurant', label: 'Restaurante / bar' },
-  { value: 'services', label: 'Servicios' },
-  { value: 'other', label: 'Otro' },
+  { value: 'restaurant', label: 'Restaurante' },
 ]
 
 export default function OnboardingPage() {
@@ -21,7 +19,7 @@ export default function OnboardingPage() {
   const [checking, setChecking] = useState(true)
   const [hasBusiness, setHasBusiness] = useState(false)
   const [name, setName] = useState('')
-  const [type, setType] = useState('store')
+  const [type, setType] = useState('retail')
   const [error, setError] = useState('')
   const [submitting, setSubmitting] = useState(false)
 
@@ -98,7 +96,7 @@ export default function OnboardingPage() {
           className="glass rounded-2xl border border-[#2a414f] p-8 shadow-[0_0_48px_rgba(0,255,159,0.08)]"
         >
           <h1 className="text-2xl font-semibold text-white">Configura tu negocio</h1>
-          <p className="mt-2 text-sm text-[#8a9aaa]">En menos de 2 minutos quedas listo.</p>
+          <p className="mt-2 text-sm text-[#8a9aaa]">En menos de 2 minutos quedas listo. El tipo no se puede cambiar después.</p>
           <form onSubmit={handleSubmit} className="mt-8 space-y-4">
             <div>
               <label

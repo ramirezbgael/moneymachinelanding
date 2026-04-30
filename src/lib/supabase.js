@@ -24,6 +24,87 @@ export const supabase = createClient(url ?? '', anonKey ?? '', {
   },
 })
 
+function slugBaseFromName(name) {
+  const normalized = String(name ?? '')
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+  const base = normalized || 'negocio'
+  return base.slice(0, 60)
+}
+
+function randomSlugSuffix(size = 10) {
+  const token = Math.random().toString(36).slice(2)
+  return token.slice(0, size).padEnd(size, 'x')
+}
+
+function shouldFallbackToDirectInsert(error) {
+  if (!error) return false
+  const code = String(error.code ?? '')
+  const status = Number(error.status ?? 0)
+  const msg = `${error.message ?? ''} ${error.details ?? ''}`.toLowerCase()
+  return (
+    status === 404 ||
+    code === 'PGRST202' ||
+    msg.includes('could not find the function') ||
+    msg.includes('schema cache') ||
+    msg.includes('404')
+  )
+}
+
+async function createBusinessAndMembershipFallback(businessName, businessType) {
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser()
+  if (authError) return { businessId: null, error: authError }
+  if (!user?.id) return { businessId: null, error: new Error('Not authenticated') }
+
+  const base = slugBaseFromName(businessName)
+  let businessId = null
+  let lastInsertError = null
+
+  for (let attempt = 0; attempt < 8; attempt += 1) {
+    const slug = `${base}-${randomSlugSuffix(10)}`
+    const { data: createdBusiness, error: businessError } = await supabase
+      .from('businesses')
+      .insert({
+        user_id: user.id,
+        name: businessName,
+        type: businessType || 'store',
+        slug,
+      })
+      .select('id')
+      .single()
+
+    if (businessError) {
+      lastInsertError = businessError
+      // Colisión de slug único, reintentar con otro sufijo.
+      const isUniqueViolation = String(businessError.code ?? '') === '23505'
+      if (isUniqueViolation) continue
+      return { businessId: null, error: businessError }
+    }
+
+    businessId = createdBusiness?.id ?? null
+    if (businessId) break
+  }
+
+  if (!businessId) {
+    return { businessId: null, error: lastInsertError ?? new Error('Could not create business') }
+  }
+
+  const { error: memberError } = await supabase.from('business_members').insert({
+    business_id: businessId,
+    user_id: user.id,
+    role: 'owner',
+  })
+  if (memberError) return { businessId: null, error: memberError }
+
+  return { businessId, error: null }
+}
+
 /** URL absoluta para enlaces de confirmación (configura la misma en Supabase → Auth → Redirect URLs). */
 export function getAuthCallbackUrl() {
   if (typeof window === 'undefined') return ''
@@ -155,6 +236,12 @@ export async function createBusinessAndMembership(businessName, businessType) {
     p_name: businessName,
     p_type: businessType || 'store',
   })
+  if (error && shouldFallbackToDirectInsert(error)) {
+    if (import.meta.env.DEV) {
+      console.warn('[onboarding] rpc unavailable, using fallback insert', error)
+    }
+    return createBusinessAndMembershipFallback(businessName, businessType)
+  }
   if (import.meta.env.DEV)
     console.log('[onboarding] rpc result', { businessId: data, ok: !error, error })
   return { businessId: data, error }
