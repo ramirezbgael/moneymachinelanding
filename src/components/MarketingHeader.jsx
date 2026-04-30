@@ -8,17 +8,31 @@ import { LangSwitch } from './landing/LangSwitch'
 export function MarketingHeader() {
   const { lang, setLang, t } = useLocale()
   const { user, loading, signOut } = useAuth()
+  const navItems = [
+    { label: 'Producto', href: '#funciones' },
+    { label: 'Industrias', href: '#industrias' },
+    { label: 'Precios', href: '#pricing' },
+    { label: 'Recursos', href: '#testimonios' },
+    { label: 'Demo', href: '#demo' },
+  ]
 
   return (
     <header className="sticky top-0 z-[90] border-b border-white/[0.06] bg-[#05070a]/94 backdrop-blur-md">
-      <div className="mx-auto flex max-w-6xl items-center justify-between gap-2 px-4 py-3 sm:gap-4 sm:px-6">
+      <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-3 sm:gap-4 sm:px-6">
         <Link
           to="/"
-          className="shrink-0 inline-flex items-center gap-2 text-sm font-semibold tracking-wide text-[#00ff9f] sm:text-[15px]"
+          className="shrink-0 inline-flex items-center gap-2 text-sm font-semibold tracking-wide text-white sm:text-[15px]"
         >
           <img src="/icon.png" alt="MoneyMachine" className="h-7 w-7 rounded-md object-cover" />
           MoneyMachine
         </Link>
+        <nav className="hidden items-center gap-6 lg:flex">
+          {navItems.map((item) => (
+            <a key={item.label} href={item.href} className="text-xs text-[#9cafbc] transition hover:text-white">
+              {item.label}
+            </a>
+          ))}
+        </nav>
         <div className="flex min-w-0 flex-wrap items-center justify-end gap-2 sm:gap-3">
           <LangSwitch variant="inline" lang={lang} setLang={setLang} label={t.langSwitch} />
           {!loading && user ? (
@@ -48,7 +62,7 @@ export function MarketingHeader() {
             <>
               <Link
                 to="/login"
-                className="shrink-0 text-sm font-medium text-[#8a9aaa] transition-colors hover:text-[#00ff9f]"
+                className="shrink-0 rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2 text-xs font-medium text-[#d5e1ea] transition hover:border-white/20 hover:text-white sm:text-sm"
               >
                 {t.navLogin}
               </Link>
