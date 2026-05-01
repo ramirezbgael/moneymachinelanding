@@ -14,6 +14,7 @@ export function MarketingHeader() {
     { label: t.navProduct, href: '#funciones' },
     { label: t.navIndustries, href: '#industrias' },
     { label: t.navPricing, href: '#pricing' },
+    { label: t.navResources, href: '/guias', isRoute: true },
     { label: t.navDemo, href: '#demo' },
   ]
 
@@ -29,9 +30,15 @@ export function MarketingHeader() {
         </Link>
         <nav className="hidden items-center gap-6 lg:flex">
           {navItems.map((item) => (
-            <a key={item.label} href={item.href} className="text-xs text-[#9cafbc] transition hover:text-white">
-              {item.label}
-            </a>
+            item.isRoute ? (
+              <Link key={item.label} to={item.href} className="text-xs text-[#9cafbc] transition hover:text-white">
+                {item.label}
+              </Link>
+            ) : (
+              <a key={item.label} href={item.href} className="text-xs text-[#9cafbc] transition hover:text-white">
+                {item.label}
+              </a>
+            )
           ))}
         </nav>
         <div className="flex min-w-0 flex-wrap items-center justify-end gap-2 sm:gap-3">

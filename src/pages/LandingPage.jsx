@@ -614,11 +614,13 @@ export default function LandingPage() {
                 <a href="#funciones" className="block hover:text-white">{isEn ? 'Features' : 'Funciones'}</a>
                 <a href="#pricing" className="block hover:text-white">{isEn ? 'Pricing' : 'Precios'}</a>
                 <a href="#demo" className="block hover:text-white">Demo</a>
+                <Link to="/soluciones" className="block hover:text-white">{isEn ? 'Solutions' : 'Soluciones'}</Link>
               </div>
               <div className="space-y-2">
                 <a href="#pricing" className="block hover:text-white">{isEn ? 'Restaurants' : 'Restaurantes'}</a>
                 <a href="#pricing" className="block hover:text-white">{isEn ? 'Gyms' : 'Gimnasios'}</a>
                 <a href="#pricing" className="block hover:text-white">Commerce</a>
+                <Link to="/guias" className="block hover:text-white">{isEn ? 'Guides' : 'Guias'}</Link>
               </div>
               <div className="space-y-2">
                 <a href="/terms" className="block hover:text-white">{isEn ? 'Terms' : 'Terminos'}</a>

@@ -1,0 +1,250 @@
+# MoneyMachine - Mapa de Paginas SEO y AEO
+
+Este documento centraliza las paginas SEO/AEO implementadas en el sitio para atraer trafico organico y responder intenciones de busqueda especificas.
+
+## Objetivo
+
+- Captar trafico top/mid funnel para restaurantes y negocios en Mexico.
+- Responder preguntas concretas con estructura tipo AEO (FAQ claras).
+- Conectar cada pagina con CTA suave hacia prueba de MoneyMachine.
+
+## Estructura base utilizada
+
+- Intro directa (respuesta en primer bloque)
+- Desarrollo del problema
+- Solucion (introduccion natural de MoneyMachine)
+- Beneficios/listas escaneables
+- FAQ (4-6 preguntas cortas)
+- CTA suave
+- Schema `FAQPage` en JSON-LD
+
+---
+
+## Hub Pages
+
+### 1) Soluciones (hub)
+- **Ruta:** `/soluciones`
+- **Tipo:** Hub SEO
+- **Rol:** Concentrar y distribuir autoridad interna a paginas de soluciones.
+
+### 2) Guias (hub)
+- **Ruta:** `/guias`
+- **Tipo:** Hub SEO/AEO
+- **Rol:** Agrupar guias informacionales y reforzar enlazado interno.
+
+---
+
+## Paginas de Solucion
+
+### 3) Solucion restaurantes
+- **Ruta:** `/soluciones/restaurantes`
+- **Tipo:** Solucion
+- **Intencion:** Comercial (suave)
+- **Keyword foco:** `pos para restaurantes`, `sistema para restaurantes`
+
+### 4) Sistema POS para restaurantes
+- **Ruta:** `/soluciones/sistema-pos-para-restaurantes`
+- **Tipo:** Solucion
+- **Intencion:** Comercial
+- **Keyword foco:** `sistema pos para restaurantes`
+
+### 5) Software para restaurantes en Mexico
+- **Ruta:** `/soluciones/software-para-restaurantes-en-mexico`
+- **Tipo:** Solucion
+- **Intencion:** Comercial/informacional
+- **Keyword foco:** `software para restaurantes en mexico`
+
+### 6) POS para taquerias
+- **Ruta:** `/soluciones/pos-para-taquerias`
+- **Tipo:** Landing de solucion
+- **Intencion:** Comercial
+- **Keyword foco:** `pos para taquerias`
+
+### 7) POS para cafeterias
+- **Ruta:** `/soluciones/pos-para-cafeterias`
+- **Tipo:** Landing de solucion
+- **Intencion:** Comercial
+- **Keyword foco:** `pos para cafeterias`
+
+### 8) POS para pizzerias
+- **Ruta:** `/soluciones/pos-para-pizzerias`
+- **Tipo:** Landing de solucion
+- **Intencion:** Comercial
+- **Keyword foco:** `pos para pizzerias`
+
+### 9) POS para bares
+- **Ruta:** `/soluciones/pos-para-bares`
+- **Tipo:** Landing de solucion
+- **Intencion:** Comercial
+- **Keyword foco:** `pos para bares`
+
+### 10) POS para food trucks
+- **Ruta:** `/soluciones/pos-para-food-trucks`
+- **Tipo:** Landing de solucion
+- **Intencion:** Comercial
+- **Keyword foco:** `pos para food trucks`
+
+### 11) POS para fondas
+- **Ruta:** `/soluciones/pos-para-fondas`
+- **Tipo:** Landing de solucion
+- **Intencion:** Comercial
+- **Keyword foco:** `pos para fondas`
+
+### 12) POS para panaderias
+- **Ruta:** `/soluciones/pos-para-panaderias`
+- **Tipo:** Landing de solucion
+- **Intencion:** Comercial
+- **Keyword foco:** `pos para panaderias`
+
+### 13) POS para reposterias
+- **Ruta:** `/soluciones/pos-para-reposterias`
+- **Tipo:** Landing de solucion
+- **Intencion:** Comercial
+- **Keyword foco:** `pos para reposterias`
+
+### 14) POS para marisquerias
+- **Ruta:** `/soluciones/pos-para-marisquerias`
+- **Tipo:** Landing de solucion
+- **Intencion:** Comercial
+- **Keyword foco:** `pos para marisquerias`
+
+### 15) POS para cocinas economicas
+- **Ruta:** `/soluciones/pos-para-cocinas-economicas`
+- **Tipo:** Landing de solucion
+- **Intencion:** Comercial
+- **Keyword foco:** `pos para cocinas economicas`
+
+## Landings SEO estilo homepage (10 nuevas)
+
+### 21) Landing SEO - sistema POS restaurantes
+- **Ruta:** `/soluciones/landing/sistema-pos-restaurantes-mexico`
+- **Tipo:** Landing SEO comercial (estilo homepage)
+- **Intencion:** Comercial
+- **Keyword foco:** `sistema POS para restaurantes en Mexico`
+
+### 22) Landing SEO - software punto de venta restaurantes
+- **Ruta:** `/soluciones/landing/software-punto-venta-restaurantes`
+- **Tipo:** Landing SEO comercial
+- **Intencion:** Comercial
+- **Keyword foco:** `software punto de venta para restaurantes`
+
+### 23) Landing SEO - POS para taquerias
+- **Ruta:** `/soluciones/landing/pos-para-taquerias-mexico`
+- **Tipo:** Landing SEO comercial
+- **Intencion:** Comercial
+- **Keyword foco:** `POS para taquerias`
+
+### 24) Landing SEO - POS para cafeterias
+- **Ruta:** `/soluciones/landing/pos-para-cafeterias-mexico`
+- **Tipo:** Landing SEO comercial
+- **Intencion:** Comercial
+- **Keyword foco:** `POS para cafeterias`
+
+### 25) Landing SEO - POS para pizzerias
+- **Ruta:** `/soluciones/landing/pos-para-pizzerias-mexico`
+- **Tipo:** Landing SEO comercial
+- **Intencion:** Comercial
+- **Keyword foco:** `POS para pizzerias`
+
+### 26) Landing SEO - POS para bares
+- **Ruta:** `/soluciones/landing/pos-para-bares-mexico`
+- **Tipo:** Landing SEO comercial
+- **Intencion:** Comercial
+- **Keyword foco:** `POS para bares`
+
+### 27) Landing SEO - POS para food trucks
+- **Ruta:** `/soluciones/landing/sistema-pos-para-food-trucks`
+- **Tipo:** Landing SEO comercial
+- **Intencion:** Comercial
+- **Keyword foco:** `sistema POS para food trucks`
+
+### 28) Landing SEO - software para cocinas economicas
+- **Ruta:** `/soluciones/landing/software-para-cocinas-economicas`
+- **Tipo:** Landing SEO comercial
+- **Intencion:** Comercial
+- **Keyword foco:** `software para cocinas economicas`
+
+### 29) Landing SEO - POS para panaderias
+- **Ruta:** `/soluciones/landing/sistema-pos-para-panaderias`
+- **Tipo:** Landing SEO comercial
+- **Intencion:** Comercial
+- **Keyword foco:** `sistema POS para panaderias`
+
+### 30) Landing SEO - POS para reposterias
+- **Ruta:** `/soluciones/landing/sistema-pos-para-reposterias`
+- **Tipo:** Landing SEO comercial
+- **Intencion:** Comercial
+- **Keyword foco:** `sistema POS para reposterias`
+
+---
+
+## Paginas de Guia (AEO fuerte)
+
+### 16) Control de inventario en negocio
+- **Ruta:** `/guias/como-controlar-inventario-negocio`
+- **Tipo:** Guia
+- **Intencion:** Informacional
+- **Keyword foco:** `como controlar inventario`
+
+### 17) POS para restaurantes pequenos
+- **Ruta:** `/guias/pos-para-restaurantes-pequenos`
+- **Tipo:** Guia
+- **Intencion:** Informacional/comparativa
+- **Keyword foco:** `pos para restaurantes pequeños`
+
+### 18) Control de caja en restaurante
+- **Ruta:** `/guias/como-llevar-control-de-caja-en-restaurante`
+- **Tipo:** Guia
+- **Intencion:** Informacional
+- **Keyword foco:** `control de caja restaurante`
+
+### 19) Reducir mermas en restaurante
+- **Ruta:** `/guias/como-reducir-mermas-en-restaurante`
+- **Tipo:** Guia
+- **Intencion:** Informacional
+- **Keyword foco:** `como reducir mermas en restaurante`
+
+### 20) Mejorar tiempos de cobro en restaurante
+- **Ruta:** `/guias/como-mejorar-tiempos-de-cobro-restaurante`
+- **Tipo:** Guia
+- **Intencion:** Informacional
+- **Keyword foco:** `como mejorar tiempos de cobro restaurante`
+
+---
+
+## Componentes SEO/AEO reutilizables del proyecto
+
+### Layout SEO de articulos
+- **Archivo:** `src/components/seo/SeoArticlePage.jsx`
+- **Incluye:**
+  - Secciones estructuradas de contenido
+  - FAQ renderizada
+  - Schema `FAQPage` (JSON-LD)
+  - CTA suave
+  - Bloque de enlaces relacionados
+  - Soporte para `title` y `meta description`
+
+---
+
+## Enlazado interno implementado
+
+- `LandingPage` enlaza a:
+  - `/soluciones`
+  - `/guias`
+- `MarketingHeader` incluye enlace de recursos hacia:
+  - `/guias`
+- Las paginas SEO incluyen bloque de:
+  - `Contenido relacionado` (links cruzados entre guias y soluciones)
+
+---
+
+## Nota de mantenimiento
+
+Al crear nuevas rutas SEO/AEO:
+
+1. Agregar ruta en `src/App.jsx`
+2. Crear pagina con `SeoArticlePage`
+3. Incluir FAQ claras y schema
+4. Conectar con links relacionados
+5. Actualizar este archivo (`SEO_AEO_PAGES.md`)
+
