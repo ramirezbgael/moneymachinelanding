@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 
 export const LANG_STORAGE_KEY = 'mm-lang'
+const LANG_CHANGE_EVENT = 'mm-lang-change'
 
 /** @typedef {'es' | 'en'} Lang */
 
@@ -22,6 +23,11 @@ export const STRINGS = {
     navLogin: 'Iniciar sesión',
     navDashboard: 'Ir al panel',
     navSignOut: 'Cerrar sesión',
+    navProduct: 'Producto',
+    navIndustries: 'Industrias',
+    navPricing: 'Precios',
+    navResources: 'Recursos',
+    navDemo: 'Demo',
     authBackHome: '← Inicio',
     authAsideLoginLead: 'Bienvenido de nuevo',
     authAsideLoginBody:
@@ -182,6 +188,11 @@ export const STRINGS = {
     navLogin: 'Log in',
     navDashboard: 'Dashboard',
     navSignOut: 'Sign out',
+    navProduct: 'Product',
+    navIndustries: 'Industries',
+    navPricing: 'Pricing',
+    navResources: 'Resources',
+    navDemo: 'Demo',
     authBackHome: '← Home',
     authAsideLoginLead: 'Welcome back',
     authAsideLoginBody:
@@ -335,18 +346,71 @@ export const STRINGS = {
   },
 }
 
-/**
- * Español por defecto; si en localStorage hay `en`, se usa inglés.
- */
+function inferLangWithoutGeolocation() {
+  if (typeof window === 'undefined') return 'es'
+
+  const localeCandidates = [
+    ...(window.navigator.languages ?? []),
+    window.navigator.language,
+    Intl.DateTimeFormat().resolvedOptions().locale,
+  ]
+    .filter(Boolean)
+    .map((v) => String(v).toLowerCase())
+
+  if (localeCandidates.some((locale) => locale.startsWith('en'))) return 'en'
+  if (localeCandidates.some((locale) => locale.startsWith('es'))) return 'es'
+
+  const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone?.toLowerCase() ?? ''
+  const likelySpanishZone = /(mexico|argentina|bogota|chile|lima|madrid)/.test(timeZone)
+  return likelySpanishZone ? 'es' : 'en'
+}
+
+function getInitialLang() {
+  if (typeof window === 'undefined') return 'es'
+  const saved = window.localStorage.getItem(LANG_STORAGE_KEY)
+  if (saved === 'en' || saved === 'es') return saved
+  return inferLangWithoutGeolocation()
+}
+
+function applyDocumentLang(lang) {
+  if (typeof document === 'undefined') return
+  document.documentElement.lang = lang === 'en' ? 'en' : 'es'
+}
+
 export function useLocale() {
-  const [lang, setLang] = useState(() => {
-    if (typeof window === 'undefined') return 'es'
-    return window.localStorage.getItem(LANG_STORAGE_KEY) === 'en' ? 'en' : 'es'
-  })
+  const [lang, setLangState] = useState(getInitialLang)
+
+  const setLang = (nextLang) => {
+    const normalized = nextLang === 'en' ? 'en' : 'es'
+    setLangState(normalized)
+
+    if (typeof window === 'undefined') return
+    window.localStorage.setItem(LANG_STORAGE_KEY, normalized)
+    applyDocumentLang(normalized)
+    window.dispatchEvent(new CustomEvent(LANG_CHANGE_EVENT, { detail: normalized }))
+  }
 
   useEffect(() => {
-    window.localStorage.setItem(LANG_STORAGE_KEY, lang)
-    document.documentElement.lang = lang === 'es' ? 'es' : 'en'
+    if (typeof window === 'undefined') return
+    applyDocumentLang(lang)
+
+    const syncFromStorage = () => {
+      const next = getInitialLang()
+      setLangState((prev) => (prev === next ? prev : next))
+    }
+
+    const syncFromCustomEvent = (event) => {
+      const next = event?.detail === 'en' ? 'en' : 'es'
+      setLangState((prev) => (prev === next ? prev : next))
+    }
+
+    window.addEventListener('storage', syncFromStorage)
+    window.addEventListener(LANG_CHANGE_EVENT, syncFromCustomEvent)
+
+    return () => {
+      window.removeEventListener('storage', syncFromStorage)
+      window.removeEventListener(LANG_CHANGE_EVENT, syncFromCustomEvent)
+    }
   }, [lang])
 
   return {

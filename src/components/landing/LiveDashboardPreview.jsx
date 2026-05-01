@@ -1,7 +1,18 @@
 import { motion } from 'framer-motion'
 import { CheckCircle2, Smartphone, Sparkles } from 'lucide-react'
+import { useLocale } from '../../i18n'
+import { toDisplayMoney, useCurrency } from '../../lib/currency'
 
 export function LiveDashboardPreview() {
+  const { lang } = useLocale()
+  const isEn = lang === 'en'
+  const { currency } = useCurrency()
+  const usdRate = Number(import.meta.env.VITE_USD_MXN_RATE) > 0 ? Number(import.meta.env.VITE_USD_MXN_RATE) : 17
+  const moneyLocale = isEn ? 'en-US' : 'es-MX'
+  const salesLabel = toDisplayMoney(52180, { currency, usdRate, locale: moneyLocale })
+  const ticketLabel = toDisplayMoney(640, { currency, usdRate, locale: moneyLocale })
+  const collectionsLabel = toDisplayMoney(12840, { currency, usdRate, locale: moneyLocale })
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 10 }}
@@ -19,21 +30,23 @@ export function LiveDashboardPreview() {
           <div>
             <div className="inline-flex items-center gap-2 rounded-full border border-[#22c55e]/35 bg-[#22c55e]/12 px-3 py-1 text-xs font-semibold text-[#9bffd9]">
               <Sparkles className="h-3.5 w-3.5" />
-              Demo multiplataforma
+              {isEn ? 'Multiplatform demo' : 'Demo multiplataforma'}
             </div>
             <h3 className="mt-4 text-3xl font-semibold leading-tight text-white sm:text-4xl">
-              Siempre en tus manos
-              <span className="block text-[#65f4c2]">tu negocio completo</span>
+              {isEn ? 'Always in your hands' : 'Siempre en tus manos'}
+              <span className="block text-[#65f4c2]">{isEn ? 'your complete business' : 'tu negocio completo'}</span>
             </h3>
             <p className="mt-3 max-w-lg text-sm text-[#a7bac7] sm:text-base">
-              Consulta ventas, pedidos y clientes desde la laptop o el teléfono. Todo sincronizado en tiempo real, para decidir y cobrar más rápido.
+              {isEn
+                ? 'Check sales, orders, and customers from laptop or phone. Everything synced in real time to decide and charge faster.'
+                : 'Consulta ventas, pedidos y clientes desde la laptop o el teléfono. Todo sincronizado en tiempo real, para decidir y cobrar más rápido.'}
             </p>
 
             <div className="mt-5 space-y-2">
               {[
-                'Dashboard en laptop para operación diaria',
-                'App móvil para monitoreo y cobros rápidos',
-                'Datos en vivo en todos tus dispositivos',
+                isEn ? 'Laptop dashboard for daily operations' : 'Dashboard en laptop para operación diaria',
+                isEn ? 'Mobile app for monitoring and fast checkout' : 'App móvil para monitoreo y cobros rápidos',
+                isEn ? 'Live data across all your devices' : 'Datos en vivo en todos tus dispositivos',
               ].map((item, idx) => (
                 <motion.div
                   key={item}
@@ -57,14 +70,14 @@ export function LiveDashboardPreview() {
             >
               <div className="rounded-[16px] border border-white/10 bg-[#0e151d] p-3 sm:p-4">
                 <div className="mb-3 flex items-center justify-between">
-                  <p className="text-xs text-[#8ea3b1]">Dashboard en laptop</p>
-                  <p className="text-xs font-semibold text-[#7ef2c8]">En vivo</p>
+                  <p className="text-xs text-[#8ea3b1]">{isEn ? 'Laptop dashboard' : 'Dashboard en laptop'}</p>
+                  <p className="text-xs font-semibold text-[#7ef2c8]">{isEn ? 'Live' : 'En vivo'}</p>
                 </div>
                 <div className="grid gap-2 sm:grid-cols-3">
                   {[
-                    ['Ventas hoy', '$52,180'],
-                    ['Pedidos', '34'],
-                    ['Ticket', '$640'],
+                    [isEn ? 'Sales today' : 'Ventas hoy', salesLabel],
+                    [isEn ? 'Orders' : 'Pedidos', '34'],
+                    [isEn ? 'Ticket' : 'Ticket', ticketLabel],
                   ].map(([label, value]) => (
                     <div key={label} className="rounded-lg border border-white/10 bg-white/[0.02] p-2.5">
                       <p className="text-[10px] text-[#8ea2b0]">{label}</p>
@@ -101,14 +114,14 @@ export function LiveDashboardPreview() {
             >
               <div className="rounded-[1.2rem] border border-white/10 bg-[#0f151d] p-2.5">
                 <div className="mb-2 flex items-center justify-between">
-                  <p className="text-[10px] text-[#97adbb]">App móvil</p>
+                  <p className="text-[10px] text-[#97adbb]">{isEn ? 'Mobile app' : 'App móvil'}</p>
                   <Smartphone className="h-3.5 w-3.5 text-[#7af1c6]" />
                 </div>
                 <div className="space-y-1.5">
                   {[
-                    ['Cobros', '$12,840'],
-                    ['Órdenes', '9 activas'],
-                    ['Caja', 'Abierta'],
+                    [isEn ? 'Collections' : 'Cobros', collectionsLabel],
+                    [isEn ? 'Orders' : 'Órdenes', isEn ? '9 active' : '9 activas'],
+                    [isEn ? 'Cash register' : 'Caja', isEn ? 'Open' : 'Abierta'],
                   ].map(([label, value]) => (
                     <div key={label} className="flex items-center justify-between rounded-md bg-white/[0.03] px-2 py-1 text-[10px]">
                       <span className="text-[#a8becb]">{label}</span>
@@ -121,7 +134,7 @@ export function LiveDashboardPreview() {
                   animate={{ boxShadow: ['0 0 0 rgba(0,255,159,0)', '0 0 18px rgba(0,255,159,0.28)', '0 0 0 rgba(0,255,159,0)'] }}
                   transition={{ duration: 2.2, repeat: Infinity, ease: 'easeInOut' }}
                 >
-                  Cobro listo
+                  {isEn ? 'Checkout ready' : 'Cobro listo'}
                 </motion.div>
               </div>
             </motion.div>

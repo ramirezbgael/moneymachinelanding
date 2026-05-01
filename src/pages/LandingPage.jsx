@@ -12,27 +12,113 @@ import {
 } from 'lucide-react'
 import { MarketingHeader } from '../components/MarketingHeader'
 import { LiveDashboardPreview } from '../components/landing/LiveDashboardPreview'
+import { useLocale } from '../i18n'
+import { convertPriceLabelFromMxn, toDisplayMoney, useCurrency } from '../lib/currency'
 import { getPlansByBusinessType } from '../lib/pricingPlans'
 
 export default function LandingPage() {
+  const { lang } = useLocale()
   const [category, setCategory] = useState('restaurant')
-  const [heroSales, setHeroSales] = useState(38691)
-  const [heroOrders, setHeroOrders] = useState(21)
-  const [heroTicket, setHeroTicket] = useState(580)
-  const [heroClients, setHeroClients] = useState(25)
-  const categoryTitle = category === 'restaurant' ? 'tu restaurante' : category === 'retail' ? 'tu tienda' : 'tu gym'
+  const [billingCycle, setBillingCycle] = useState('monthly')
+  const [heroSales, setHeroSales] = useState(52180)
+  const [heroOrders, setHeroOrders] = useState(34)
+  const [heroTicket, setHeroTicket] = useState(640)
+  const { currency } = useCurrency()
+  const isEn = lang === 'en'
+  const categoryTitle =
+    isEn
+      ? category === 'restaurant'
+        ? 'your restaurant'
+        : category === 'retail'
+          ? 'your store'
+          : 'your gym'
+      : category === 'restaurant'
+        ? 'tu restaurante'
+        : category === 'retail'
+          ? 'tu tienda'
+          : 'tu gym'
   const categoryPlans = useMemo(() => getPlansByBusinessType(category), [category])
+  const heroMetrics = isEn ? ['Orders', 'Ticket'] : ['Pedidos', 'Ticket']
+  const fastBenefits = isEn
+    ? [
+        { title: 'Laptop dashboard for daily operations', text: '' },
+        { title: 'Mobile app for monitoring and fast checkout', text: '' },
+        { title: 'Live data across all your devices', text: '' },
+      ]
+    : [
+        { title: 'Dashboard en laptop para operación diaria', text: '' },
+        { title: 'App móvil para monitoreo y cobros rápidos', text: '' },
+        { title: 'Datos en vivo en todos tus dispositivos', text: '' },
+      ]
+
+  const localizedPlans = useMemo(() => {
+    const usdRate = Number(import.meta.env.VITE_USD_MXN_RATE) > 0 ? Number(import.meta.env.VITE_USD_MXN_RATE) : 17
+
+    const translateFeature = (text) =>
+      ({
+        '1 dispositivo': '1 device',
+        'TPV basico': 'Basic POS',
+        'Comandas con meseros desde celular': 'Waiter mobile ordering',
+        'Multi dispositivo': 'Multi device',
+        'Control total de operaciones': 'Full operations control',
+        'Todo lo anterior': 'Everything above',
+        'Autofacturacion por comensal (QR en mesa)': 'Self-invoicing per guest (table QR)',
+        'Menos carga operativa': 'Lower operational load',
+        TPV: 'POS',
+        Inventario: 'Inventory',
+        Clientes: 'Customers',
+        'Facturacion electronica (proximamente)': 'E-invoicing (coming soon)',
+        Suscripciones: 'Subscriptions',
+        'Acceso con QR': 'QR access',
+        'Control de asistencia': 'Attendance control',
+      }[text] ?? text)
+
+    const translateName = (name) =>
+      ({
+        'Commerce Basico': 'Commerce Basic',
+      }[name] ?? name)
+
+    const translateBadge = (badge) =>
+      ({
+        'Mas popular': 'Most popular',
+        Proximamente: 'Coming soon',
+      }[badge] ?? badge)
+
+    return categoryPlans.map((plan) => {
+      const monthlyBase = currency === 'USD' && plan.priceMonthlyUsdLabel ? plan.priceMonthlyUsdLabel : plan.priceMonthlyLabel
+      const yearlyBase = currency === 'USD' && plan.priceYearlyUsdLabel ? plan.priceYearlyUsdLabel : plan.priceYearlyLabel
+
+      return {
+        ...plan,
+        name: isEn ? translateName(plan.name) : plan.name,
+        badge: isEn && plan.badge ? translateBadge(plan.badge) : plan.badge,
+        priceLabel: convertPriceLabelFromMxn(plan.priceLabel, { currency, usdRate, locale: isEn ? 'en-US' : 'es-MX' }),
+        priceMonthlyLabel: monthlyBase
+          ? convertPriceLabelFromMxn(monthlyBase, { currency, usdRate, locale: isEn ? 'en-US' : 'es-MX' })
+          : '',
+        priceYearlyLabel: yearlyBase
+          ? convertPriceLabelFromMxn(yearlyBase, { currency, usdRate, locale: isEn ? 'en-US' : 'es-MX' })
+          : '',
+        features: isEn ? plan.features.map(translateFeature) : plan.features,
+      }
+    })
+  }, [categoryPlans, currency, isEn])
 
   useEffect(() => {
     const heroStatsTimer = setInterval(() => {
       setHeroSales((prev) => prev + Math.floor(Math.random() * 120 + 30))
-      setHeroOrders((prev) => (prev >= 29 ? 21 : prev + 1))
-      setHeroTicket((prev) => (prev >= 640 ? 580 : prev + Math.floor(Math.random() * 5 + 1)))
-      setHeroClients((prev) => (prev >= 34 ? 25 : prev + 1))
+      setHeroOrders((prev) => (prev >= 38 ? 34 : prev + 1))
+      setHeroTicket((prev) => (prev >= 670 ? 640 : prev + Math.floor(Math.random() * 4 + 1)))
     }, 1800)
 
     return () => clearInterval(heroStatsTimer)
   }, [])
+
+  const usdRate = Number(import.meta.env.VITE_USD_MXN_RATE) > 0 ? Number(import.meta.env.VITE_USD_MXN_RATE) : 17
+  const moneyLocale = isEn ? 'en-US' : 'es-MX'
+  const heroSalesLabel = toDisplayMoney(heroSales, { currency, usdRate, locale: moneyLocale })
+  const heroTicketLabel = toDisplayMoney(heroTicket, { currency, usdRate, locale: moneyLocale })
+  const mobileCollectionsLabel = toDisplayMoney(12840, { currency, usdRate, locale: moneyLocale })
 
   return (
     <div className="relative overflow-x-hidden bg-[#05070a] text-[#dce3eb]">
@@ -50,28 +136,30 @@ export default function LandingPage() {
         <section className="grid gap-8 py-12 lg:grid-cols-[1.05fr_0.95fr] lg:items-center lg:gap-12 lg:py-20">
           <div>
             <p className="inline-flex rounded-full border border-[#00ff9f]/20 bg-[#00ff9f]/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.2em] text-[#7af6c6]">
-              Hecho para tu negocio
+              {isEn ? 'Built for your business' : 'Hecho para tu negocio'}
             </p>
             <h1 className="mt-5 text-4xl font-semibold leading-tight text-white sm:text-6xl">
-              Controla tu negocio
-              <span className="block text-[#46f7b4]">como una máquina</span>
+              {isEn ? 'Control your business' : 'Controla tu negocio'}
+              <span className="block text-[#46f7b4]">{isEn ? 'like a machine' : 'como una máquina'}</span>
             </h1>
-            <p className="mt-6 max-w-xl text-base text-[#a5b5c2] sm:text-lg">Más ventas, menos fricción, todo desde tu celular.</p>
+            <p className="mt-6 max-w-xl text-base text-[#a5b5c2] sm:text-lg">
+              {isEn ? 'More sales, less friction, all from your phone.' : 'Más ventas, menos fricción, todo desde tu celular.'}
+            </p>
             <div className="mt-9 flex flex-col gap-3 sm:flex-row">
               <Link
                 to="/register"
-                className="inline-flex items-center justify-center rounded-xl bg-[#00ff9f] px-6 py-3 text-sm font-semibold text-[#052014] shadow-[0_0_32px_rgba(0,255,159,0.35)] transition hover:scale-[1.02]"
+                className="inline-flex items-center justify-center rounded-xl border border-[#00ff9f]/70 bg-transparent px-6 py-3 text-sm font-semibold text-[#9affde] shadow-[0_0_14px_rgba(0,255,159,0.08)] transition-all duration-300 hover:scale-[1.01] hover:bg-[#00ff9f] hover:text-[#052014] hover:shadow-[0_0_30px_rgba(0,255,159,0.3)]"
               >
-                Empieza gratis
+                {isEn ? 'Start free' : 'Empieza gratis'}
               </Link>
               <a
                 href="#demo"
                 className="inline-flex items-center justify-center rounded-xl border border-white/15 bg-white/[0.03] px-6 py-3 text-sm font-medium text-[#d2dee7] backdrop-blur"
               >
-                Ver demo
+                {isEn ? 'Watch demo' : 'Ver demo'}
               </a>
             </div>
-            <p className="mt-5 text-xs text-[#84a0b2]">7 días gratis · Sin tarjeta</p>
+            <p className="mt-5 text-xs text-[#84a0b2]">{isEn ? '7-day trial · No card' : '7 días gratis · Sin tarjeta'}</p>
           </div>
 
           <div className="relative mx-auto w-full max-w-[520px] rounded-3xl border border-white/10 bg-[#0d1117]/92 p-4 shadow-[0_30px_80px_rgba(0,0,0,0.55)] sm:p-5">
@@ -94,7 +182,12 @@ export default function LandingPage() {
                 whileHover={{ scale: 1.01 }}
                 transition={{ duration: 0.2 }}
               >
-                <p className="text-xs text-[#8fa4b3]">Resumen de hoy</p>
+                <div className="flex items-center justify-between">
+                  <p className="text-xs text-[#8fa4b3]">{isEn ? 'Laptop dashboard' : 'Dashboard en laptop'}</p>
+                  <span className="rounded-full border border-[#1f6b52] bg-[#00ff9f]/10 px-2 py-0.5 text-[10px] font-semibold text-[#9affe0]">
+                    {isEn ? 'Live' : 'En vivo'}
+                  </span>
+                </div>
                 <motion.p
                   key={heroSales}
                   className="mt-1 text-3xl font-semibold text-white"
@@ -102,14 +195,14 @@ export default function LandingPage() {
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.25 }}
                 >
-                  ${heroSales.toLocaleString()}
+                  {heroSalesLabel}
                 </motion.p>
                 <motion.p
                   className="text-xs text-[#7bf1c5]"
                   animate={{ opacity: [0.7, 1, 0.7] }}
                   transition={{ duration: 2.2, repeat: Infinity, ease: 'easeInOut' }}
                 >
-                  +12.5% vs ayer
+                  {isEn ? 'Sales today' : 'Ventas hoy'}
                 </motion.p>
                 <svg viewBox="0 0 280 90" className="mt-3 h-20 w-full">
                   <defs>
@@ -136,11 +229,10 @@ export default function LandingPage() {
                     transition={{ duration: 5.8, repeat: Infinity, ease: 'linear' }}
                   />
                 </svg>
-                <div className="mt-2 grid grid-cols-3 gap-2">
+                <div className="mt-2 grid grid-cols-2 gap-2">
                   {[
-                    ['Pedidos', String(heroOrders)],
-                    ['Ticket', `$${heroTicket}`],
-                    ['Clientes', String(heroClients)],
+                    [heroMetrics[0], String(heroOrders)],
+                    [heroMetrics[1], heroTicketLabel],
                   ].map(([label, value], idx) => (
                     <motion.div
                       key={label}
@@ -169,9 +261,9 @@ export default function LandingPage() {
                 transition={{ duration: 3.3, repeat: Infinity, ease: 'easeInOut' }}
               >
                 <div className="h-full rounded-[1.1rem] border border-white/10 bg-[#0f141b] p-2">
-                  <p className="text-[10px] text-[#9cb0be]">Nueva venta</p>
+                  <p className="text-[10px] text-[#9cb0be]">{isEn ? 'Mobile app' : 'App móvil'}</p>
                   <div className="mt-2 space-y-1.5">
-                    {['Cafe Americano', 'Agua Mineral', 'Granola Bowl'].map((item, idx) => (
+                    {(isEn ? ['Collections', 'Orders', 'Cash register'] : ['Cobros', 'Órdenes', 'Caja']).map((item, idx) => (
                       <motion.div
                         key={item}
                         className="flex items-center justify-between text-[10px] text-[#d8e3ea]"
@@ -180,7 +272,9 @@ export default function LandingPage() {
                         transition={{ duration: 0.35, delay: 0.1 + idx * 0.12 }}
                       >
                         <span>{item}</span>
-                        <span>$89</span>
+                        <span>
+                          {idx === 0 ? mobileCollectionsLabel : idx === 1 ? (isEn ? '9 active' : '9 activas') : (isEn ? 'Open' : 'Abierta')}
+                        </span>
                       </motion.div>
                     ))}
                   </div>
@@ -189,7 +283,7 @@ export default function LandingPage() {
                     animate={{ boxShadow: ['0 0 0 rgba(0,255,159,0)', '0 0 18px rgba(0,255,159,0.22)', '0 0 0 rgba(0,255,159,0)'] }}
                     transition={{ duration: 2.2, repeat: Infinity, ease: 'easeInOut' }}
                   >
-                    Cobro listo
+                    {isEn ? 'Checkout ready' : 'Cobro listo'}
                   </motion.div>
                 </div>
               </motion.div>
@@ -198,12 +292,7 @@ export default function LandingPage() {
         </section>
 
         <section className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          {[
-            { title: 'Ahorra tiempo', text: 'Automatiza tareas y enfócate en lo importante.' },
-            { title: 'Vende más', text: 'Toma mejores decisiones con datos reales.' },
-            { title: 'Sin errores', text: 'Reduce fallos humanos y pérdidas.' },
-            { title: 'Siempre contigo', text: 'Accede desde cualquier lugar y dispositivo.' },
-          ].map((item) => (
+          {fastBenefits.map((item) => (
             <article
               key={item.title}
               className="rounded-2xl border border-[#24483f] bg-[linear-gradient(140deg,rgba(0,255,159,0.1),rgba(8,12,16,0.92))] px-4 py-3"
@@ -214,7 +303,7 @@ export default function LandingPage() {
                 </span>
                 <p className="text-sm font-semibold text-white">{item.title}</p>
               </div>
-              <p className="mt-1 text-xs text-[#a9bcc9]">{item.text}</p>
+              {item.text ? <p className="mt-1 text-xs text-[#a9bcc9]">{item.text}</p> : null}
             </article>
           ))}
         </section>
@@ -226,62 +315,110 @@ export default function LandingPage() {
         <section id="funciones" className="mt-20">
           <div className="mx-auto max-w-3xl text-center">
             <p className="inline-flex rounded-full border border-[#00ff9f]/25 bg-[#00ff9f]/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.14em] text-[#8cffd3]">
-              Hecho para tu negocio
+              {isEn ? 'Built for your business' : 'Hecho para tu negocio'}
             </p>
             <h2 className="mt-3 text-3xl font-semibold leading-tight text-white sm:text-5xl">
-              Un sistema. Tres industrias.
-              <span className="block text-[#46f7b4]">Resultados reales.</span>
+              {isEn ? 'One platform. Three industries.' : 'Un sistema. Tres industrias.'}
+              <span className="block text-[#46f7b4]">{isEn ? 'Real results.' : 'Resultados reales.'}</span>
             </h2>
           </div>
 
           <div id="industrias" className="mt-10 grid gap-5 lg:grid-cols-3">
-            {[
-              {
-                title: 'Restaurantes',
-                subtitle: 'Pedidos al instante desde el celular',
-                bullets: ['Comandas digitales', 'Menos errores', 'Mas velocidad'],
-                cta: 'Ver planes para restaurantes',
-                Icon: UtensilsCrossed,
-                badge: 'Mas ventas',
-                mockLabel: 'Mock restaurante',
-                mockTone: 'from-[#2a1d14] via-[#131920] to-[#0a0f15]',
-                cardTone: 'from-[#20150f] via-[#10151d] to-[#090d13]',
-                iconTone: 'text-[#ffb870]',
-                borderTone: 'border-[#5a3b2b]',
-                badgeTone: 'bg-[#ff9f43]/15 border-[#ff9f43]/35 text-[#ffd3a2]',
-                glowTone: 'bg-[#ff9f43]/25',
-              },
-              {
-                title: 'Gimnasios',
-                subtitle: 'Accesos y suscripciones automáticas',
-                bullets: ['QR automatico', 'Pagos recurrentes', 'Control total'],
-                cta: 'Ver planes para gimnasios',
-                Icon: Dumbbell,
-                badge: 'Mas control',
-                mockLabel: 'Mock gimnasio',
-                mockTone: 'from-[#101a2f] via-[#101723] to-[#0a1019]',
-                cardTone: 'from-[#10182b] via-[#0f1520] to-[#090f17]',
-                iconTone: 'text-[#77acff]',
-                borderTone: 'border-[#2f4572]',
-                badgeTone: 'bg-[#4f7dff]/18 border-[#5d8bff]/35 text-[#c6d8ff]',
-                glowTone: 'bg-[#5d8bff]/25',
-              },
-              {
-                title: 'Commerce',
-                subtitle: 'Ventas e inventario en tiempo real',
-                bullets: ['TPV rapido', 'Inventario en tiempo real', 'Clientes'],
-                cta: 'Ver planes para Commerce',
-                Icon: ShoppingBag,
-                badge: 'Mas eficiencia',
-                mockLabel: 'Mock tienda',
-                mockTone: 'from-[#1d2a1f] via-[#11191c] to-[#0a1115]',
-                cardTone: 'from-[#112016] via-[#0d1717] to-[#090f13]',
-                iconTone: 'text-[#52f2b1]',
-                borderTone: 'border-[#295442]',
-                badgeTone: 'bg-[#38d996]/16 border-[#38d996]/35 text-[#bafde0]',
-                glowTone: 'bg-[#38d996]/25',
-              },
-            ].map((useCase, idx) => (
+            {(isEn
+              ? [
+                  {
+                    title: 'Restaurants',
+                    subtitle: 'Instant orders from mobile',
+                    bullets: ['Digital tickets', 'Fewer mistakes', 'More speed'],
+                    cta: 'View restaurant plans',
+                    Icon: UtensilsCrossed,
+                    badge: 'More sales',
+                    mockLabel: 'Restaurant mock',
+                    mockTone: 'from-[#2a1d14] via-[#131920] to-[#0a0f15]',
+                    cardTone: 'from-[#20150f] via-[#10151d] to-[#090d13]',
+                    iconTone: 'text-[#ffb870]',
+                    borderTone: 'border-[#5a3b2b]',
+                    badgeTone: 'bg-[#ff9f43]/15 border-[#ff9f43]/35 text-[#ffd3a2]',
+                    glowTone: 'bg-[#ff9f43]/25',
+                  },
+                  {
+                    title: 'Gyms',
+                    subtitle: 'Automated access and subscriptions',
+                    bullets: ['Automatic QR', 'Recurring payments', 'Full control'],
+                    cta: 'View gym plans',
+                    Icon: Dumbbell,
+                    badge: 'More control',
+                    mockLabel: 'Gym mock',
+                    mockTone: 'from-[#101a2f] via-[#101723] to-[#0a1019]',
+                    cardTone: 'from-[#10182b] via-[#0f1520] to-[#090f17]',
+                    iconTone: 'text-[#77acff]',
+                    borderTone: 'border-[#2f4572]',
+                    badgeTone: 'bg-[#4f7dff]/18 border-[#5d8bff]/35 text-[#c6d8ff]',
+                    glowTone: 'bg-[#5d8bff]/25',
+                  },
+                  {
+                    title: 'Commerce',
+                    subtitle: 'Real-time sales and inventory',
+                    bullets: ['Fast POS', 'Live inventory', 'Customers'],
+                    cta: 'View commerce plans',
+                    Icon: ShoppingBag,
+                    badge: 'More efficiency',
+                    mockLabel: 'Store mock',
+                    mockTone: 'from-[#1d2a1f] via-[#11191c] to-[#0a1115]',
+                    cardTone: 'from-[#112016] via-[#0d1717] to-[#090f13]',
+                    iconTone: 'text-[#52f2b1]',
+                    borderTone: 'border-[#295442]',
+                    badgeTone: 'bg-[#38d996]/16 border-[#38d996]/35 text-[#bafde0]',
+                    glowTone: 'bg-[#38d996]/25',
+                  },
+                ]
+              : [
+                  {
+                    title: 'Restaurantes',
+                    subtitle: 'Pedidos al instante desde el celular',
+                    bullets: ['Comandas digitales', 'Menos errores', 'Mas velocidad'],
+                    cta: 'Ver planes para restaurantes',
+                    Icon: UtensilsCrossed,
+                    badge: 'Mas ventas',
+                    mockLabel: 'Mock restaurante',
+                    mockTone: 'from-[#2a1d14] via-[#131920] to-[#0a0f15]',
+                    cardTone: 'from-[#20150f] via-[#10151d] to-[#090d13]',
+                    iconTone: 'text-[#ffb870]',
+                    borderTone: 'border-[#5a3b2b]',
+                    badgeTone: 'bg-[#ff9f43]/15 border-[#ff9f43]/35 text-[#ffd3a2]',
+                    glowTone: 'bg-[#ff9f43]/25',
+                  },
+                  {
+                    title: 'Gimnasios',
+                    subtitle: 'Accesos y suscripciones automáticas',
+                    bullets: ['QR automatico', 'Pagos recurrentes', 'Control total'],
+                    cta: 'Ver planes para gimnasios',
+                    Icon: Dumbbell,
+                    badge: 'Mas control',
+                    mockLabel: 'Mock gimnasio',
+                    mockTone: 'from-[#101a2f] via-[#101723] to-[#0a1019]',
+                    cardTone: 'from-[#10182b] via-[#0f1520] to-[#090f17]',
+                    iconTone: 'text-[#77acff]',
+                    borderTone: 'border-[#2f4572]',
+                    badgeTone: 'bg-[#4f7dff]/18 border-[#5d8bff]/35 text-[#c6d8ff]',
+                    glowTone: 'bg-[#5d8bff]/25',
+                  },
+                  {
+                    title: 'Commerce',
+                    subtitle: 'Ventas e inventario en tiempo real',
+                    bullets: ['TPV rapido', 'Inventario en tiempo real', 'Clientes'],
+                    cta: 'Ver planes para Commerce',
+                    Icon: ShoppingBag,
+                    badge: 'Mas eficiencia',
+                    mockLabel: 'Mock tienda',
+                    mockTone: 'from-[#1d2a1f] via-[#11191c] to-[#0a1115]',
+                    cardTone: 'from-[#112016] via-[#0d1717] to-[#090f13]',
+                    iconTone: 'text-[#52f2b1]',
+                    borderTone: 'border-[#295442]',
+                    badgeTone: 'bg-[#38d996]/16 border-[#38d996]/35 text-[#bafde0]',
+                    glowTone: 'bg-[#38d996]/25',
+                  },
+                ]).map((useCase, idx) => (
               <motion.article
                 key={useCase.title}
                 initial={{ opacity: 0, y: 18 }}
@@ -353,17 +490,17 @@ export default function LandingPage() {
         <section id="pricing" className="mt-24">
           <div className="mx-auto max-w-3xl text-center">
             <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[#77f3c3]">
-              Planes disenados para tu negocio
+              {isEn ? 'Plans built for your business' : 'Planes disenados para tu negocio'}
             </p>
             <h2 className="mt-2 text-3xl font-semibold text-white sm:text-5xl">
-              Elige lo ideal
-              <span className="block text-[#46f7b4]">para {categoryTitle}</span>
+              {isEn ? 'Choose the right plan' : 'Elige lo ideal'}
+              <span className="block text-[#46f7b4]">{isEn ? `for ${categoryTitle}` : `para ${categoryTitle}`}</span>
             </h2>
           </div>
 
           <div className="mx-auto mt-10 flex w-fit flex-wrap rounded-2xl border border-white/10 bg-[#101010]/92 p-1.5">
             {[
-              { id: 'restaurant', label: 'Restaurantes' },
+              { id: 'restaurant', label: isEn ? 'Restaurants' : 'Restaurantes' },
               { id: 'retail', label: 'Commerce' },
               { id: 'gym', label: 'Gym' },
             ].map((tab) => (
@@ -382,16 +519,48 @@ export default function LandingPage() {
             ))}
           </div>
 
+          <div className="mt-5 flex flex-col items-center gap-2">
+            <div className="flex w-fit items-center rounded-2xl border border-white/10 bg-[#101010]/92 p-1.5">
+              {[
+                { id: 'monthly', label: isEn ? 'Monthly' : 'Mensual' },
+                { id: 'yearly', label: isEn ? 'Yearly' : 'Anual' },
+              ].map((cycle) => (
+                <button
+                  key={cycle.id}
+                  type="button"
+                  onClick={() => setBillingCycle(cycle.id)}
+                  className={`rounded-xl px-4 py-2 text-sm transition ${
+                    billingCycle === cycle.id
+                      ? 'border border-[#00ff9f]/40 bg-[#00ff9f]/15 text-[#99ffd8] shadow-[0_0_18px_rgba(0,255,159,0.18)]'
+                      : 'border border-transparent bg-transparent text-[#9db0bf]'
+                  }`}
+                >
+                  {cycle.label}
+                </button>
+              ))}
+            </div>
+            <p className="text-xs text-[#7fdab5]">
+              {isEn ? 'Yearly billing is cheaper in the long run.' : 'La anualidad te sale más barata a largo plazo.'}
+            </p>
+          </div>
+
           <div className="mt-10 grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-            {categoryPlans.map((plan) => (
+            {localizedPlans.map((plan) => (
               <PricingCard
                 key={plan.key}
                 name={plan.name}
-                price={plan.priceLabel}
+                price={
+                  billingCycle === 'yearly' && plan.priceYearlyLabel
+                    ? plan.priceYearlyLabel
+                    : plan.priceMonthlyLabel || plan.priceLabel
+                }
                 subtitle=""
                 bullets={plan.features}
                 highlight={plan.key === 'pro'}
                 badge={plan.badge ?? ''}
+                lang={lang}
+                billingCycle={billingCycle}
+                hasYearly={Boolean(plan.priceYearlyLabel)}
               />
             ))}
           </div>
@@ -399,16 +568,16 @@ export default function LandingPage() {
           <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {[
               {
-                title: 'Inventario',
-                text: 'Nunca te quedes sin producto',
+                title: isEn ? 'Inventory' : 'Inventario',
+                text: isEn ? 'Never run out of stock' : 'Nunca te quedes sin producto',
               },
               {
-                title: 'Clientes',
-                text: 'Vende mas a los que ya te compraron',
+                title: isEn ? 'Customers' : 'Clientes',
+                text: isEn ? 'Sell more to existing buyers' : 'Vende mas a los que ya te compraron',
               },
               {
-                title: 'Suscripciones',
-                text: 'Ingresos recurrentes sin esfuerzo',
+                title: isEn ? 'Subscriptions' : 'Suscripciones',
+                text: isEn ? 'Recurring revenue without friction' : 'Ingresos recurrentes sin esfuerzo',
               },
             ].map((feature) => (
               <article
@@ -417,7 +586,7 @@ export default function LandingPage() {
               >
                 <div className="inline-flex items-center justify-center gap-2 rounded-full border border-[#22c55e]/30 bg-[#22c55e]/12 px-2.5 py-1 text-xs text-[#9df8d2]">
                   <Sparkles className="h-3.5 w-3.5" />
-                  Resultado real
+                  {isEn ? 'Real outcome' : 'Resultado real'}
                 </div>
                 <h3 className="mt-2 text-lg font-semibold text-white">{feature.title}</h3>
                 <p className="mt-1 text-sm text-[#c9d7e1]">{feature.text}</p>
@@ -435,23 +604,25 @@ export default function LandingPage() {
               <p className="text-[clamp(2.4rem,9vw,6.5rem)] font-semibold uppercase leading-[0.9] tracking-[-0.03em] text-white">
                 MoneyMachine
               </p>
-              <p className="mt-4 max-w-md text-sm text-[#9fb2c0]">La forma simple de operar tu negocio.</p>
+              <p className="mt-4 max-w-md text-sm text-[#9fb2c0]">
+                {isEn ? 'The simple way to run your business.' : 'La forma simple de operar tu negocio.'}
+              </p>
             </div>
 
             <div className="grid grid-cols-2 gap-6 text-sm text-[#a8bac7] sm:grid-cols-3">
               <div className="space-y-2">
-                <a href="#funciones" className="block hover:text-white">Funciones</a>
-                <a href="#pricing" className="block hover:text-white">Precios</a>
+                <a href="#funciones" className="block hover:text-white">{isEn ? 'Features' : 'Funciones'}</a>
+                <a href="#pricing" className="block hover:text-white">{isEn ? 'Pricing' : 'Precios'}</a>
                 <a href="#demo" className="block hover:text-white">Demo</a>
               </div>
               <div className="space-y-2">
-                <a href="#pricing" className="block hover:text-white">Restaurantes</a>
-                <a href="#pricing" className="block hover:text-white">Gimnasios</a>
+                <a href="#pricing" className="block hover:text-white">{isEn ? 'Restaurants' : 'Restaurantes'}</a>
+                <a href="#pricing" className="block hover:text-white">{isEn ? 'Gyms' : 'Gimnasios'}</a>
                 <a href="#pricing" className="block hover:text-white">Commerce</a>
               </div>
               <div className="space-y-2">
-                <a href="/terms" className="block hover:text-white">Terminos</a>
-                <a href="/privacy" className="block hover:text-white">Privacidad</a>
+                <a href="/terms" className="block hover:text-white">{isEn ? 'Terms' : 'Terminos'}</a>
+                <a href="/privacy" className="block hover:text-white">{isEn ? 'Privacy' : 'Privacidad'}</a>
               </div>
             </div>
           </div>
@@ -463,7 +634,18 @@ export default function LandingPage() {
   )
 }
 
-function PricingCard({ name, price, subtitle = '', bullets, highlight = false, badge = '' }) {
+function PricingCard({
+  name,
+  price,
+  subtitle = '',
+  bullets,
+  highlight = false,
+  badge = '',
+  lang = 'es',
+  billingCycle = 'monthly',
+  hasYearly = false,
+}) {
+  const isEn = lang === 'en'
   return (
     <article
       className={`rounded-2xl border p-5 backdrop-blur-xl ${
@@ -482,6 +664,9 @@ function PricingCard({ name, price, subtitle = '', bullets, highlight = false, b
       </div>
       {subtitle ? <p className="mt-1 text-sm text-[#9fb2c1]">{subtitle}</p> : null}
       <p className="mt-2 text-xl font-semibold text-[#92ffd6]">{price}</p>
+      {billingCycle === 'yearly' && hasYearly ? (
+        <p className="mt-1 text-xs text-[#7fdab5]">{isEn ? 'Better long-term value' : 'Mejor precio a largo plazo'}</p>
+      ) : null}
       <ul className="mt-4 space-y-2 text-sm text-[#b6c3ce]">
         {bullets.map((item) => (
           <li key={item} className="flex items-start gap-2">
@@ -494,13 +679,15 @@ function PricingCard({ name, price, subtitle = '', bullets, highlight = false, b
         to="/register"
         className={`mt-5 inline-flex w-full items-center justify-center rounded-xl px-5 py-2.5 text-sm font-semibold transition ${
           highlight
-            ? 'bg-[#00ff9f] text-[#062016] shadow-[0_0_24px_rgba(0,255,159,0.28)]'
+            ? 'border border-[#00ff9f]/70 bg-transparent text-[#9affde] shadow-[0_0_14px_rgba(0,255,159,0.08)] hover:bg-[#00ff9f] hover:text-[#062016] hover:shadow-[0_0_28px_rgba(0,255,159,0.28)]'
             : 'border border-white/15 bg-white/[0.02] text-[#d9e6ee] hover:border-[#00ff9f]/35'
         }`}
       >
-        Empieza gratis
+        {isEn ? 'Start free' : 'Empieza gratis'}
       </Link>
-      <p className="mt-2 text-center text-xs text-[#7f92a1]">7 dias gratis · Sin tarjeta</p>
+      <p className="mt-2 text-center text-xs text-[#7f92a1]">
+        {isEn ? '7-day trial · No card' : '7 dias gratis · Sin tarjeta'}
+      </p>
     </article>
   )
 }

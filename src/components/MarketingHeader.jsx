@@ -2,18 +2,19 @@ import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { useLocale } from '../i18n'
 import { useAuth } from '../hooks/useAuth'
+import { useCurrency } from '../lib/currency'
 import { LangSwitch } from './landing/LangSwitch'
 
 /** Cabecera pública: idioma, login/registro o panel + cerrar sesión. */
 export function MarketingHeader() {
   const { lang, setLang, t } = useLocale()
+  const { currency, setCurrency } = useCurrency()
   const { user, loading, signOut } = useAuth()
   const navItems = [
-    { label: 'Producto', href: '#funciones' },
-    { label: 'Industrias', href: '#industrias' },
-    { label: 'Precios', href: '#pricing' },
-    { label: 'Recursos', href: '#testimonios' },
-    { label: 'Demo', href: '#demo' },
+    { label: t.navProduct, href: '#funciones' },
+    { label: t.navIndustries, href: '#industrias' },
+    { label: t.navPricing, href: '#pricing' },
+    { label: t.navDemo, href: '#demo' },
   ]
 
   return (
@@ -35,6 +36,26 @@ export function MarketingHeader() {
         </nav>
         <div className="flex min-w-0 flex-wrap items-center justify-end gap-2 sm:gap-3">
           <LangSwitch variant="inline" lang={lang} setLang={setLang} label={t.langSwitch} />
+          <div className="flex items-center gap-1 rounded-full border border-white/[0.08] bg-[#0a1219]/90 px-1 py-1 backdrop-blur-sm">
+            {['MXN', 'USD'].map((code) => {
+              const active = currency === code
+              return (
+                <button
+                  key={code}
+                  type="button"
+                  onClick={() => setCurrency(code)}
+                  className={`rounded-full px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wider transition-colors ${
+                    active
+                      ? 'border border-[#00ff9f]/65 bg-[#00ff9f]/12 text-[#9affde]'
+                      : 'border border-[#00ff9f]/35 text-[#7a8a99] hover:bg-[#00ff9f] hover:text-[#05120c]'
+                  }`}
+                  aria-pressed={active}
+                >
+                  {code}
+                </button>
+              )
+            })}
+          </div>
           {!loading && user ? (
             <>
               <span
@@ -69,7 +90,7 @@ export function MarketingHeader() {
               <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} className="shrink-0">
                 <Link
                   to="/register"
-                  className="inline-block rounded-lg bg-[#00ff9f] px-4 py-2 text-sm font-semibold text-[#05120c] shadow-[0_0_20px_rgba(0,255,159,0.2)]"
+                  className="inline-block rounded-lg border border-[#00ff9f]/70 bg-transparent px-4 py-2 text-sm font-semibold text-[#9affde] shadow-[0_0_14px_rgba(0,255,159,0.08)] transition-all duration-300 hover:bg-[#00ff9f] hover:text-[#05120c] hover:shadow-[0_0_26px_rgba(0,255,159,0.28)]"
                 >
                   {t.ctaStart}
                 </Link>
