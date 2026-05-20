@@ -44,8 +44,10 @@ export default function RestaurantCashControlGuidePage() {
       ctaText="Si quieres probar este flujo en tu operacion, puedes probar MoneyMachine y medir mejora en control de caja."
       ctaHref="/register"
       relatedLinks={[
-        { label: 'Guia para reducir mermas', href: '/guias/como-reducir-mermas-en-restaurante' },
-        { label: 'Solucion para restaurantes', href: '/soluciones/restaurantes' },
+        { label: 'Monitorear caja en tiempo real', href: '/guias/monitorear-caja-tiempo-real' },
+        { label: 'Ver ventas desde el celular', href: '/guias/ver-ventas-negocio-celular-tiempo-real' },
+        { label: 'Guía para reducir mermas', href: '/guias/como-reducir-mermas-en-restaurante' },
+        { label: 'Solución para restaurantes', href: '/soluciones/restaurantes' },
       ]}
     />
   )

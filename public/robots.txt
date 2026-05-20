@@ -1,0 +1,15 @@
+# MoneyMachine — robots.txt
+User-agent: *
+Allow: /
+
+# No indexar área de producto autenticada
+Disallow: /dashboard
+Disallow: /stores
+Disallow: /users
+Disallow: /modules
+Disallow: /subscription
+Disallow: /settings
+Disallow: /onboarding
+Disallow: /auth/
+
+Sitemap: https://moneymachine.com.mx/sitemap.xml

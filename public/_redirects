@@ -1,3 +1,0 @@
-# SPA fallback: Netlify sirve index.html en cualquier ruta para que React Router funcione
-# al recargar /dashboard, /subscription, etc. y al volver de Stripe (?checkout=success).
-/*    /index.html   200

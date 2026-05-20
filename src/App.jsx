@@ -6,6 +6,7 @@ import { ProtectedRoute } from './components/ProtectedRoute'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import { DashboardWorkspaceProvider } from './context/DashboardWorkspaceContext'
 import DashboardLayout from './components/dashboard/DashboardLayout'
+import { GoogleAnalytics } from './components/GoogleAnalytics'
 
 const LandingPage = lazy(() => import('./pages/LandingPage'))
 const PublicPage = lazy(() => import('./pages/PublicPage'))
@@ -36,6 +37,19 @@ const PosForSmallRestaurantsGuidePage = lazy(() => import('./pages/guides/PosFor
 const RestaurantCashControlGuidePage = lazy(() => import('./pages/guides/RestaurantCashControlGuidePage'))
 const RestaurantWasteReductionGuidePage = lazy(() => import('./pages/guides/RestaurantWasteReductionGuidePage'))
 const RestaurantCheckoutSpeedGuidePage = lazy(() => import('./pages/guides/RestaurantCheckoutSpeedGuidePage'))
+const MobileSalesRealtimeGuidePage = lazy(() => import('./pages/guides/MobileSalesRealtimeGuidePage'))
+const RealtimeCashMonitoringGuidePage = lazy(() => import('./pages/guides/RealtimeCashMonitoringGuidePage'))
+const MobileSalesDashboardSolutionPage = lazy(() => import('./pages/solutions/MobileSalesDashboardSolutionPage'))
+const GymMembershipBillingGuidePage = lazy(() => import('./pages/guides/GymMembershipBillingGuidePage'))
+const RestaurantMobileOrdersGuidePage = lazy(() => import('./pages/guides/RestaurantMobileOrdersGuidePage'))
+const GymMembershipSystemSolutionPage = lazy(() => import('./pages/solutions/GymMembershipSystemSolutionPage'))
+const WaiterOrdersAppSolutionPage = lazy(() => import('./pages/solutions/WaiterOrdersAppSolutionPage'))
+const AllInOnePlatformSolutionPage = lazy(() => import('./pages/solutions/AllInOnePlatformSolutionPage'))
+const SquareAlternativesSolutionPage = lazy(() => import('./pages/solutions/SquareAlternativesSolutionPage'))
+const SmallStoreInventoryAppGuidePage = lazy(() => import('./pages/guides/SmallStoreInventoryAppGuidePage'))
+const BestPosMexico2026SolutionPage = lazy(() => import('./pages/solutions/BestPosMexico2026SolutionPage'))
+const IncreaseRestaurantSalesGuidePage = lazy(() => import('./pages/guides/IncreaseRestaurantSalesGuidePage'))
+const RetailCommerceSolutionPage = lazy(() => import('./pages/solutions/RetailCommerceSolutionPage'))
 
 function RouteFallback() {
   return (
@@ -49,6 +63,7 @@ function RouteFallback() {
 export default function App() {
   return (
     <BrowserRouter>
+      <GoogleAnalytics />
       <AuthProvider>
         <VerificationGateProvider>
           <Suspense fallback={<RouteFallback />}>
@@ -64,8 +79,24 @@ export default function App() {
               <Route path="/pricing" element={<PricingPage />} />
               <Route path="/soluciones" element={<SolutionsIndexPage />} />
               <Route path="/soluciones/restaurantes" element={<RestaurantsSolutionPage />} />
+              <Route path="/soluciones/comercios" element={<RetailCommerceSolutionPage />} />
               <Route path="/soluciones/sistema-pos-para-restaurantes" element={<RestaurantPosSystemPage />} />
               <Route path="/soluciones/software-para-restaurantes-en-mexico" element={<RestaurantSoftwareMexicoPage />} />
+              <Route
+                path="/soluciones/dashboard-ventas-movil-mexico"
+                element={<MobileSalesDashboardSolutionPage />}
+              />
+              <Route
+                path="/soluciones/sistema-membresias-gym-mexico"
+                element={<GymMembershipSystemSolutionPage />}
+              />
+              <Route path="/soluciones/app-pedidos-meseros" element={<WaiterOrdersAppSolutionPage />} />
+              <Route
+                path="/soluciones/plataforma-todo-en-uno-negocio"
+                element={<AllInOnePlatformSolutionPage />}
+              />
+              <Route path="/soluciones/alternativas-square-mexico" element={<SquareAlternativesSolutionPage />} />
+              <Route path="/soluciones/mejor-pos-mexico-2026" element={<BestPosMexico2026SolutionPage />} />
               <Route path="/soluciones/landing/:slug" element={<SeoMoneyLandingPage />} />
               <Route path="/soluciones/:slug" element={<SolutionLandingPage />} />
               <Route path="/guias" element={<GuidesIndexPage />} />
@@ -74,6 +105,27 @@ export default function App() {
               <Route path="/guias/como-llevar-control-de-caja-en-restaurante" element={<RestaurantCashControlGuidePage />} />
               <Route path="/guias/como-reducir-mermas-en-restaurante" element={<RestaurantWasteReductionGuidePage />} />
               <Route path="/guias/como-mejorar-tiempos-de-cobro-restaurante" element={<RestaurantCheckoutSpeedGuidePage />} />
+              <Route
+                path="/guias/ver-ventas-negocio-celular-tiempo-real"
+                element={<MobileSalesRealtimeGuidePage />}
+              />
+              <Route path="/guias/monitorear-caja-tiempo-real" element={<RealtimeCashMonitoringGuidePage />} />
+              <Route
+                path="/guias/automatizar-cobro-mensualidades-gimnasio"
+                element={<GymMembershipBillingGuidePage />}
+              />
+              <Route
+                path="/guias/sistema-pedidos-restaurante-celular"
+                element={<RestaurantMobileOrdersGuidePage />}
+              />
+              <Route
+                path="/guias/mejor-app-inventario-tienda-pequena-mexico"
+                element={<SmallStoreInventoryAppGuidePage />}
+              />
+              <Route
+                path="/guias/como-aumentar-ventas-restaurante"
+                element={<IncreaseRestaurantSalesGuidePage />}
+              />
               <Route path="/privacy" element={<PrivacyPage />} />
               <Route path="/terms" element={<TermsPage />} />
               <Route

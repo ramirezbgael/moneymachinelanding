@@ -3,6 +3,41 @@ import { MarketingHeader } from '../components/MarketingHeader'
 
 const solutionLinks = [
   {
+    href: '/soluciones/plataforma-todo-en-uno-negocio',
+    title: 'Plataforma todo en uno',
+    desc: 'POS, inventario, clientes y reportes sin pagar 5 herramientas.',
+  },
+  {
+    href: '/soluciones/alternativas-square-mexico',
+    title: 'Alternativas a Square en México',
+    desc: 'Comparativa para restaurantes y tiendas que necesitan más que cobro.',
+  },
+  {
+    href: '/soluciones/dashboard-ventas-movil-mexico',
+    title: 'Dashboard de ventas móvil',
+    desc: 'Monitorea ventas, pedidos y caja desde el celular en tiempo real.',
+  },
+  {
+    href: '/soluciones/sistema-membresias-gym-mexico',
+    title: 'Sistema de membresías para gimnasios',
+    desc: 'Cobros recurrentes, acceso QR y control de socios en México.',
+  },
+  {
+    href: '/soluciones/app-pedidos-meseros',
+    title: 'App de pedidos para meseros',
+    desc: 'Comandas desde celular a cocina con menos errores en hora pico.',
+  },
+  {
+    href: '/soluciones/mejor-pos-mexico-2026',
+    title: 'Mejor POS en México 2026',
+    desc: 'Guía honesta por giro: restaurante, tienda y gimnasio.',
+  },
+  {
+    href: '/soluciones/comercios',
+    title: 'POS para comercios y tiendas',
+    desc: 'TPV, inventario en vivo y reportes para retail en México.',
+  },
+  {
     href: '/soluciones/restaurantes',
     title: 'Solucion para restaurantes',
     desc: 'Panorama rapido de problemas operativos y enfoque recomendado.',

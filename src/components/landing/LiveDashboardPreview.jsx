@@ -32,14 +32,13 @@ export function LiveDashboardPreview() {
               <Sparkles className="h-3.5 w-3.5" />
               {isEn ? 'Multiplatform demo' : 'Demo multiplataforma'}
             </div>
-            <h3 className="mt-4 text-3xl font-semibold leading-tight text-white sm:text-4xl">
-              {isEn ? 'Always in your hands' : 'Siempre en tus manos'}
-              <span className="block text-[#65f4c2]">{isEn ? 'your complete business' : 'tu negocio completo'}</span>
+            <h3 className="mt-4 text-2xl font-semibold leading-tight text-white sm:text-3xl">
+              {isEn ? 'Laptop + mobile, one operation' : 'Laptop y celular, una sola operación'}
             </h3>
             <p className="mt-3 max-w-lg text-sm text-[#a7bac7] sm:text-base">
               {isEn
-                ? 'Check sales, orders, and customers from laptop or phone. Everything synced in real time to decide and charge faster.'
-                : 'Consulta ventas, pedidos y clientes desde la laptop o el teléfono. Todo sincronizado en tiempo real, para decidir y cobrar más rápido.'}
+                ? 'Charge at the counter, send orders to the kitchen, and review sales from anywhere—without switching tools.'
+                : 'Cobra en caja, manda comandas a cocina y revisa ventas desde cualquier lugar—sin cambiar de herramienta.'}
             </p>
 
             <div className="mt-5 space-y-2">

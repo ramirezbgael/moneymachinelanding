@@ -11,11 +11,11 @@ export function MarketingHeader() {
   const { currency, setCurrency } = useCurrency()
   const { user, loading, signOut } = useAuth()
   const navItems = [
-    { label: t.navProduct, href: '#funciones' },
+    { label: t.navProduct, href: '#solucion' },
     { label: t.navIndustries, href: '#industrias' },
     { label: t.navPricing, href: '#pricing' },
     { label: t.navResources, href: '/guias', isRoute: true },
-    { label: t.navDemo, href: '#demo' },
+    { label: t.navDemo, href: '#demos' },
   ]
 
   return (

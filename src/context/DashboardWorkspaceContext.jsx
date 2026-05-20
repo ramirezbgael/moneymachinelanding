@@ -94,7 +94,7 @@ export function DashboardWorkspaceProvider({ children }) {
 
       setLoadError(
         looksLikeCors
-          ? 'El navegador bloqueó la conexión a Supabase (CORS). En Supabase → Project Settings → API → Allowed CORS origins, agrega el origin EXACTO de la barra de direcciones: http://localhost:5173 y http://127.0.0.1:5173 (y en prod tu dominio Netlify). Guarda y recarga.'
+          ? 'El navegador bloqueó la conexión a Supabase (CORS). En Supabase → Project Settings → API → Allowed CORS origins, agrega el origin EXACTO de la barra de direcciones: http://localhost:5173, http://127.0.0.1:5173 y https://moneymachine.com.mx. Guarda y recarga.'
           : 'No se pudieron cargar los datos. Cierra sesión y vuelve a iniciar, o reintenta.',
       )
       setProfile(null)

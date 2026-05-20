@@ -1,16 +1,25 @@
 import { createClient } from '@supabase/supabase-js'
 import { isValidUserId } from './ids'
 
-const url = import.meta.env.VITE_SUPABASE_URL
-const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
+const url = (import.meta.env.VITE_SUPABASE_URL ?? '').trim()
+const anonKey = (import.meta.env.VITE_SUPABASE_ANON_KEY ?? '').trim()
+const supabaseConfigured =
+  Boolean(url && anonKey && /^https?:\/\/.+/i.test(url))
 
-if (import.meta.env.DEV && (!url || !anonKey)) {
-  console.warn(
-    '[MoneyMachine] Faltan VITE_SUPABASE_URL o VITE_SUPABASE_ANON_KEY. Configura .env para auth y datos.',
-  )
+if (!supabaseConfigured) {
+  const msg =
+    '[MoneyMachine] Build sin Supabase: define VITE_SUPABASE_URL y VITE_SUPABASE_ANON_KEY en .env antes de npm run build (ver DEPLOY_IONOS.md).'
+  if (import.meta.env.DEV) console.warn(msg)
+  else console.error(msg)
 }
 
-export const supabase = createClient(url ?? '', anonKey ?? '', {
+/** false si el deploy se hizo sin .env (típico en Netlify sin variables). */
+export { supabaseConfigured }
+
+export const supabase = createClient(
+  supabaseConfigured ? url : 'https://invalid.local',
+  supabaseConfigured ? anonKey : 'invalid',
+  {
   auth: {
     persistSession: true,
     autoRefreshToken: true,
@@ -22,7 +31,8 @@ export const supabase = createClient(url ?? '', anonKey ?? '', {
     flowType: 'implicit',
     debug: false,
   },
-})
+  },
+)
 
 function slugBaseFromName(name) {
   const normalized = String(name ?? '')

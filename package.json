@@ -5,7 +5,11 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "generate:sitemap": "node scripts/generate-sitemap.mjs",
+    "optimize:demos": "node scripts/optimize-demos.mjs",
+    "check-env": "node scripts/check-env.mjs",
+    "build": "npm run check-env && npm run generate:sitemap && vite build",
+    "build:ionos": "npm run build && cp .htaccess dist/",
     "lint": "eslint .",
     "preview": "vite preview"
   },
